@@ -25,9 +25,34 @@ namespace desu_life_web_backend.Controllers.Discord
         }
 
         [HttpGet(Name = "DiscordLink")]
-        public ActionResult<SystemMsg> GetAuthorizeLink()
+        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
         {
+
+            // check user's links
+            if (await Database.Client.CheckCurrentUserHasLinkedDiscord(8600))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Your account is currently linked to discord account."
+                }
+                );
+            }
+
             string discordAuthUrl = $"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}";
+
+            // create new token
+            if (!await Database.Client.AddVerifyToken(8600, "link", "discord", DateTimeOffset.Now.AddHours(1), "new token here"))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Token generate failed. Please contact Administrator."
+                });
+            }
+
+
+
 
             //Response.Redirect(discordAuthUrl);
 
@@ -106,7 +131,7 @@ namespace desu_life_web_backend.Controllers.Discord
             }
             catch (FlurlHttpException ex)
             {
-               // Console.WriteLine("Response Content: " + await ex.GetResponseStringAsync());
+                // Console.WriteLine("Response Content: " + await ex.GetResponseStringAsync());
                 return BadRequest(new SystemMsg
                 {
                     Status = "failed",
@@ -114,10 +139,49 @@ namespace desu_life_web_backend.Controllers.Discord
                 }); ;
             }
 
+            // get osu user id from response data
+            var discord_uid = responseBody["id"].ToString();
+
+            // check if the osu user has linked to another desu.life account.
+
+            if (await Database.Client.DiscordCheckUserHasLinkedByOthers(discord_uid))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "The provided discord account has been linked by other desu.life user."
+                }
+                );
+
+            }
+            // virefy the operation Token
+            // sql = "SELECT * FROM user_verify WHERE uid = '{$uid}' AND token = '{$token}' AND op = 'link' AND platform = 'osu'";
+            if (!await Database.Client.CheckUserAccessbility(8600, "new token here", "link", "discord"))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Invaild Token."
+                }
+                );
+            }
+
+            // execute link op
+            // uid=8600 *test uid
+            if (!await Database.Client.LinkDiscordAccount(8600, discord_uid))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "An exception detected when trying to link with discord account. Please contact the administrator."
+                }
+                );
+            }
+
             return Ok(new SystemMsg
             {
                 Status = "success",
-                Msg = $"uid: {responseBody["id"]}"
+                Msg = $"Link successfully. discord uid: {discord_uid}"
             });
 
         }

@@ -73,6 +73,24 @@ namespace desu_life_web_backend.Database
             return false;
         }
 
+        public static async Task<bool> DiscordCheckUserHasLinkedByOthers(string discord_uid)
+        {
+            using var db = GetInstance();
+            var li = db.Users.Where(it => it.discord_uid == discord_uid).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+                return true;
+            return false;
+        }
+
+        public static async Task<bool> CheckCurrentUserHasLinkedDiscord(long uid)
+        {
+            using var db = GetInstance();
+            var li = await db.Users.Where(it => it.uid == uid).Select(it => it.discord_uid).FirstOrDefaultAsync();
+            if (li != null)
+                return true;
+            return false;
+        }
+
         public static async Task<bool> CheckCurrentUserHasLinkedOSU(long uid)
         {
             using var db = GetInstance();
@@ -93,6 +111,17 @@ namespace desu_life_web_backend.Database
             if (await li.CountAsync() > 0)
                 return true;
             return false;
+        }
+
+        public static async Task<bool> LinkDiscordAccount(long uid, string discord_uid)
+        {
+            using var db = GetInstance();
+            var res = await db.Users
+                .Where(it => it.uid == uid)
+                .Set(it => it.discord_uid, discord_uid)
+                .UpdateAsync();
+
+            return res > -1;
         }
 
         public static async Task<bool> InsertOsuUser(long uid, long osu_uid)
