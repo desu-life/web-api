@@ -25,17 +25,37 @@ namespace desu_life_web_backend.Controllers.OSU
         }
 
         [HttpGet(Name = "OsuLink")]
-        public ActionResult<SystemMsg> GetAuthorizeLink()
+        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
         {
-            string discordAuthUrl = $"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}";
 
-            //Response.Redirect(discordAuthUrl);
+            // check user's links
+            if (await Database.Client.CheckCurrentUserHasLinkedOSU(8600))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Your account is currently linked to osu! account."
+                }
+                );
+            }
+
+            string osuAuthUrl = $"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}";
+
+            // create new token
+            if (!await Database.Client.AddVerifyToken(8600, "link", "osu", DateTimeOffset.Now.AddHours(1), "new token here"))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Token generate failed. Please contact Administrator."
+                });
+            }
 
             return Ok(new SystemMsg
             {
                 Status = "success",
                 Msg = "Redirect to this URL.",
-                Url = discordAuthUrl
+                Url = osuAuthUrl
             });
         }
     }
@@ -70,15 +90,6 @@ namespace desu_life_web_backend.Controllers.OSU
             JObject responseBody;
             try
             {
-                //var requestData = new JObject
-                //{
-                //    { "grant_type", "authorization_code" },
-                //    { "client_id", config.osu?.clientId },
-                //    { "client_secret", config.osu?.clientSecret },
-                //    { "code", QueryString },
-                //    { "redirect_uri", config.osu!.RedirectUrl }
-                //};
-
                 var requestData = new
                 {
                     grant_type = "authorization_code",
@@ -95,7 +106,6 @@ namespace desu_life_web_backend.Controllers.OSU
             }
             catch (FlurlHttpException ex)
             {
-                //Console.WriteLine("Response Content: " + await ex.GetResponseStringAsync());
                 return BadRequest(new SystemMsg
                 {
                     Status = "failed",
@@ -122,10 +132,49 @@ namespace desu_life_web_backend.Controllers.OSU
                 }); ;
             }
 
+            // get osu user id from response data
+            var osu_uid = responseBody["id"].ToString();
+
+            // check if the osu user has linked to another desu.life account.
+
+            if (await Database.Client.OSUCheckUserHasLinkedByOthers(osu_uid))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "The provided osu! account has been linked by other desu.life user."
+                }
+                );
+
+            }
+            // virefy the operation Token
+            // sql = "SELECT * FROM user_verify WHERE uid = '{$uid}' AND token = '{$token}' AND op = 'link' AND platform = 'osu'";
+            if (!await Database.Client.CheckUserAccessbility(8600, "new token here", "link", "osu"))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "Invaild Token."
+                }
+                );
+            }
+
+            // execute link op
+            // uid=8600 *test uid
+            if (!await Database.Client.InsertOsuUser(8600, long.Parse(osu_uid)))
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "An exception detected when trying to link with osu! account. Please contact the administrator."
+                }
+                );
+            }
+
             return Ok(new SystemMsg
             {
                 Status = "success",
-                Msg = $"uid: {responseBody["id"]}"
+                Msg = $"Link successfully. osu uid: {osu_uid}"
             });
 
         }

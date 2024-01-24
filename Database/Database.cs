@@ -1,6 +1,7 @@
 ﻿using LinqToDB;
 using LinqToDB.Common;
 using MySqlConnector;
+using static desu_life_web_backend.Database.Connection;
 using static desu_life_web_backend.Database.Models;
 
 namespace desu_life_web_backend.Database
@@ -9,7 +10,7 @@ namespace desu_life_web_backend.Database
     {
         private static Config.Base config = Config.inner!;
 
-        private static DB GetInstance()
+        private static Connection GetInstance()
         {
             var options = new DataOptions().UseMySqlConnector(
                 new MySqlConnectionStringBuilder
@@ -24,20 +25,27 @@ namespace desu_life_web_backend.Database
                 }.ConnectionString
             );
             // 暂时只有Mysql
-            return new DB(options);
+            return new Connection(options);
         }
 
         public static async Task<User?> GetUser(string mailAddr)
         {
             using var db = GetInstance();
-            return await db.User.Where(it => it.email == mailAddr).FirstOrDefaultAsync();
+            return await db.Users.Where(it => it.email == mailAddr).FirstOrDefaultAsync();
         }
 
-        public static async Task<bool> AddVerifyToken(string mailAddr, string verify)
+
+
+        public static async Task<bool> AddVerifyToken(long uid, string op, string platform, DateTimeOffset time, string token)
         {
             using var db = GetInstance();
             var newverify = new UserVerify()
             {
+                uid = uid,
+                op = op,
+                platform = platform,
+                time = time,
+                token = token
             };
 
             try
@@ -51,7 +59,63 @@ namespace desu_life_web_backend.Database
             }
         }
 
+        public static async Task<bool> OSUCheckUserHasLinkedByOthers(string osu_uid)
+        {
+            return await OSUCheckUserHasLinkedByOthers(long.Parse(osu_uid));
+        }
 
+        public static async Task<bool> OSUCheckUserHasLinkedByOthers(long osu_uid)
+        {
+            using var db = GetInstance();
+            var li = db.UsersOSU.Where(it => it.osu_uid == osu_uid).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+                return true;
+            return false;
+        }
+
+        public static async Task<bool> CheckCurrentUserHasLinkedOSU(long uid)
+        {
+            using var db = GetInstance();
+            var li = db.UsersOSU.Where(it => it.uid == uid).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+                return true;
+            return false;
+        }
+
+        public static async Task<bool> CheckUserAccessbility(long uid, string token, string op, string platform)
+        {
+            using var db = GetInstance();
+            var li = db.UserVerify.Where(it => it.uid == uid)
+                                  .Where(it => it.token == token)
+                                  .Where(it => it.op == op)
+                                  .Where(it => it.platform == platform)
+                                  .Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+                return true;
+            return false;
+        }
+
+        public static async Task<bool> InsertOsuUser(long uid, long osu_uid)
+        {
+            using var db = GetInstance();
+            var d = new UserOSU()
+            {
+                uid = uid,
+                osu_uid = osu_uid,
+                osu_mode = "osu",
+                customInfoEngineVer = 2,
+                InfoPanelV2_Mode = 1
+            };
+            try
+            {
+                await db.InsertAsync(d);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }
 

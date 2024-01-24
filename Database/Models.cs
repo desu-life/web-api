@@ -5,16 +5,7 @@ namespace desu_life_web_backend.Database
 {
     public static class Models
     {
-        public class DB : LinqToDB.Data.DataConnection
-        {
-            public DB(DataOptions options) : base(options) { }
 
-            public ITable<User> User => this.GetTable<User>();
-            public ITable<UserOSU> UserOSU => this.GetTable<UserOSU>();
-            public ITable<UserVerify> UserVerify => this.GetTable<UserVerify>();
-            
-            // ... other tables ...
-        }
         [Table("users")]
         public class User
         {
@@ -96,7 +87,7 @@ namespace desu_life_web_backend.Database
             public string? platform { get; set; }
 
             [Column]
-            public DateTime time { get; set; }
+            public DateTimeOffset time { get; set; }
         }
     }
 }
