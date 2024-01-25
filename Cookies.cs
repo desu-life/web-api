@@ -4,6 +4,7 @@ public static partial class Cookies
 {
     public static CookieOptions Expire { get; set; }
     public static CookieOptions Login { get; set; }
+    public static CookieOptions Verity { get; set; }
 
     static Cookies()
     {
@@ -16,6 +17,12 @@ public static partial class Cookies
         Login = new()
         {
             Expires = DateTime.Now.AddMinutes(60), // same as JWT expire time
+            HttpOnly = true // no JavaScript access
+        };
+
+        Verity = new()
+        {
+            Expires = DateTime.Now.AddMinutes(60),
             HttpOnly = true // no JavaScript access
         };
     }

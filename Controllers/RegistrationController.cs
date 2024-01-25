@@ -11,22 +11,18 @@ using static Org.BouncyCastle.Math.EC.ECCurve;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
-using static desu_life_web_backend.ReturnRequests;
+using static desu_life_web_backend.ResponseService;
 
 namespace desu_life_web_backend.Controllers.Registration
 {
 
     [ApiController]
     [Route("[controller]")]
-    public class registrationController : ControllerBase
+    public class registrationController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
-        private readonly ILogger<SystemMsg> _logger;
-
-        public registrationController(ILogger<SystemMsg> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "Registration")]
         public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string name)
@@ -82,8 +78,7 @@ namespace desu_life_web_backend.Controllers.Registration
             return Ok(new SystemMsg
             {
                 Status = "success",
-                Msg = "The registration mail has been sent.",
-                Url = ""
+                Msg = "The registration mail has been sent."
             });
         }
     }

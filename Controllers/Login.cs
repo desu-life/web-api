@@ -1,90 +1,53 @@
-﻿using Flurl.Http;
-using Flurl.Util;
-using LanguageExt;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using static Org.BouncyCastle.Math.EC.ECCurve;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using static desu_life_web_backend.ReturnRequests;
-using static desu_life_web_backend.Cookies;
+﻿using Microsoft.AspNetCore.Mvc;
+using static desu_life_web_backend.ResponseService;
 
 namespace desu_life_web_backend.Controllers.Login
 {
     [ApiController]
     [Route("[controller]")]
-    public class logoutController(ILogger<SystemMsg> logger) : ControllerBase
+    public class logoutController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
         private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "Logout")]
-        public ActionResult<SystemMsg> ExecuteLogOut()
+        public ActionResult ExecuteLogOut()
         {
-            HttpContext.Response.Cookies.Append("token", "", Expire);
-            return Request(Enums.Ok, "Successfully logged out.");
+            HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
+            return _responseService.Response(HttpStatusCodes.Ok, "Successfully logged out.");
         }
     }
 
 
     [Route("[controller]")]
-    public class loginController(ILogger<SystemMsg> logger) : ControllerBase
+    public class loginController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
         private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "Login")]
-        public async Task<ActionResult<SystemMsg>> ExecuteLoginAsync(string? mailAddr, string? password)
+        public async Task<ActionResult> ExecuteLoginAsync(string? mailAddr, string? password)
         {
             // check if user token is valid
             if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Already logged in."
-                });
-            }
+                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
+            // check email&password
             if (string.IsNullOrEmpty(mailAddr) || string.IsNullOrEmpty(password))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Please provide complete email or password."
-                });
-            }
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Please provide complete email or password.");
 
             // check user validity
             var userId = await Database.Client.CheckUserIsValidity(mailAddr, password);
             if (userId < 0)
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "User does not exist or password is incorrect."
-                }
-                );
-            }
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "User does not exist or password is incorrect.");
 
             // create new token
-            var cookieOptions = new CookieOptions
-            {
-                Expires = DateTime.Now.AddMinutes(10), // same as JWT expire time
-                HttpOnly = true // no JavaScript access
-            };
-            HttpContext.Response.Cookies.Append("token", JWT.CreateJWTToken(userId, null), cookieOptions);
+            HttpContext.Response.Cookies.Append("token", JWT.CreateJWTToken(userId, null), Cookies.Login);
 
-            return Ok(new SystemMsg
-            {
-                Status = "success",
-                Msg = "Successfully logged in.",
-            });
+            // success
+            return _responseService.Response(HttpStatusCodes.Ok, "Successfully logged in.");
         }
     }
 }

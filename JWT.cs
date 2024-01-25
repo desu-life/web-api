@@ -12,9 +12,19 @@ public static partial class JWT
 {
     private static SigningCredentials creds { get; set; }
     private static SymmetricSecurityKey key { get; set; }
+    private static TokenValidationParameters validationParameters { get; set; }
 
     static JWT()
     {
+        validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            IssuerSigningKey = key,
+            ValidIssuer = "desu.life",
+            ValidAudience = "desu.life"
+        };
         if (!File.Exists("secretKey"))
         {
             //key = new SymmetricSecurityKey(Guid.NewGuid().ToByteArray());
@@ -56,19 +66,26 @@ public static partial class JWT
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    public static string CreateJWTToken(string verify_token, DateTime? expires)
+    {
+        if (!expires.HasValue) expires = DateTime.Now.AddMinutes(10);
+
+        Claim[] claim_set = [new("verify_token", verify_token)];
+
+        var token = new JwtSecurityToken(
+            issuer: "desu.life",
+            audience: "desu.life",
+            claims: claim_set,
+            expires: expires,
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     public static bool ValidateJWTToken(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            IssuerSigningKey = key,
-            ValidIssuer = "desu.life",
-            ValidAudience = "desu.life"
-        };
-
         try
         {
             SecurityToken validatedToken;
@@ -79,5 +96,58 @@ public static partial class JWT
         {
             return false;
         }
+    }
+
+    public static long GetUserID(IRequestCookieCollection cookies)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
+            var userIdClaim = principal.FindFirst("userId");
+            if (userIdClaim != null)
+            {
+                var userId = long.Parse(userIdClaim.Value);
+                Console.WriteLine($"User ID: {userId}");
+                return userId;
+            }
+            else
+            {
+                Console.WriteLine("User ID claim not found in the token.");
+            }
+            return -1;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Token validation failed: {ex.Message}");
+        }
+        return -1;
+    }
+
+    // not finished yet
+    public static long GetVerifyToken(IRequestCookieCollection cookies)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
+            var userIdClaim = principal.FindFirst("verify_token");
+            if (userIdClaim != null)
+            {
+                var userId = long.Parse(userIdClaim.Value);
+                Console.WriteLine($"User ID: {userId}");
+                return userId;
+            }
+            else
+            {
+                Console.WriteLine("User ID claim not found in the token.");
+            }
+            return -1;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Token validation failed: {ex.Message}");
+        }
+        return -1;
     }
 }

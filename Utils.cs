@@ -76,7 +76,7 @@ public static partial class Utils
 
         byte[] keyBytes = new byte[bits / 8];
 
-        using (var rng = new RNGCryptoServiceProvider())
+        using (var rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(keyBytes);
         }
@@ -84,4 +84,27 @@ public static partial class Utils
         return keyBytes;
     }
 
+    public static string GenerateRandomString(int length, string allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    {
+        if (length <= 0)
+        {
+            throw new ArgumentException("Length must be greater than zero.");
+        }
+
+        byte[] randomBytes = new byte[length];
+
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(randomBytes);
+        }
+
+        char[] chars = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            int index = randomBytes[i] % allowedChars.Length;
+            chars[i] = allowedChars[index];
+        }
+
+        return new string(chars);
+    }
 }

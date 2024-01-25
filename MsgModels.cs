@@ -9,7 +9,5 @@ namespace desu_life_web_backend
         public string? Status { get; set; }
 
         public string? Msg { get; set; }
-
-        public string? Url { get; set; }
     }
 }

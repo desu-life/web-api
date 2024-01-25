@@ -8,22 +8,18 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static Org.BouncyCastle.Math.EC.ECCurve;
-using static desu_life_web_backend.ReturnRequests;
+using static desu_life_web_backend.ResponseService;
 
 namespace desu_life_web_backend.Controllers.Discord
 {
 
     [ApiController]
     [Route("[controller]")]
-    public class discord_linkController : ControllerBase
+    public class discord_linkController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
-        private readonly ILogger<SystemMsg> _logger;
-
-        public discord_linkController(ILogger<SystemMsg> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "DiscordLink")]
         public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
@@ -60,23 +56,17 @@ namespace desu_life_web_backend.Controllers.Discord
             return Ok(new SystemMsg
             {
                 Status = "success",
-                Msg = "Redirect to this URL.",
-                Url = discordAuthUrl
+                Msg = "Redirect to this URL."
             });
         }
     }
 
     [Route("/callback/[controller]")]
-    public class discord_callbackController : ControllerBase
+    public class discord_callbackController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
-
-        private readonly ILogger<SystemMsg> _logger;
-
-        public discord_callbackController(ILogger<SystemMsg> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "DiscordCallBack")]
         public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string? code)
@@ -139,7 +129,7 @@ namespace desu_life_web_backend.Controllers.Discord
             }
 
             // get osu user id from response data
-            var discord_uid = responseBody["id"].ToString();
+            var discord_uid = (responseBody["id"] ?? "").ToString();
 
             // check if the osu user has linked to another desu.life account.
 
