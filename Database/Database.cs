@@ -36,7 +36,11 @@ namespace desu_life_web_backend.Database
             return await db.Users.Where(it => it.email == mailAddr).FirstOrDefaultAsync();
         }
 
-
+        public static async Task<User?> GetUser(long userId)
+        {
+            using var db = GetInstance();
+            return await db.Users.Where(it => it.uid == userId).FirstOrDefaultAsync();
+        }
 
         public static async Task<bool> AddVerifyToken(string mailAddr, string op, string platform, DateTimeOffset time, string token)
         {
@@ -100,6 +104,20 @@ namespace desu_life_web_backend.Database
             if (await li.CountAsync() > 0)
                 return true;
             return false;
+        }
+
+        public static async Task<long> GetOsuUID(long uid)
+        {
+            using var db = GetInstance();
+            try
+            {
+                var li = await db.UsersOSU.Where(it => it.uid == uid).Select(it => it.osu_uid).FirstOrDefaultAsync();
+                return li;
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         public static async Task<bool> CheckUserIsRegistered(string email)

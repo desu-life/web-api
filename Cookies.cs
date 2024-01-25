@@ -17,7 +17,7 @@ public static partial class Cookies
 
         Expire = new()
         {
-            Expires = DateTime.Now.AddMinutes(-1),
+            Expires = DateTime.Now.AddDays(-1),
             HttpOnly = true
         };
 
