@@ -53,45 +53,45 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             // success
             return _responseService.Response(HttpStatusCodes.Ok, "The registration mail has been sent.");
         }
+    }
 
-        [Route("[controller]")]
-        public class reset_passwordController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+    [Route("[controller]")]
+    public class reset_passwordController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+    {
+        private static Config.Base config = Config.inner!;
+        private readonly ILogger<Log> _logger = logger;
+        private readonly ResponseService _responseService = responseService;
+
+        [HttpGet(Name = "ResetPassword")]
+        public async Task<ActionResult> ExecuteResetPasswordAsync(string password, string Token)
         {
-            private static Config.Base config = Config.inner!;
-            private readonly ILogger<Log> _logger = logger;
-            private readonly ResponseService _responseService = responseService;
+            // log
+            _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
 
-            [HttpGet(Name = "ResetPassword")]
-            public async Task<ActionResult> ExecuteResetPasswordAsync(string password, string Token)
-            {
-                // log
-                _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
+            // check if the user is logged in
+            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
-                // check if the user is logged in
-                if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                    return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
+            // empty check
+            if (string.IsNullOrEmpty(password))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
 
-                // empty check
-                if (string.IsNullOrEmpty(password))
-                    return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
+            // get email address from database by using token
+            var email = await Database.Client.GetEmailAddressByVerifyToken(Token, "resetPassword", "desulife");
 
-                // get email address from database by using token
-                var email = await Database.Client.GetEmailAddressByVerifyToken(Token, "resetPassword", "desulife");
+            // empty check
+            if (string.IsNullOrEmpty(email))
+                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
-                // empty check
-                if (string.IsNullOrEmpty(email))
-                    return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+            // update password
+            if (!await Database.Client.UpdatePassword(email, password))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Password update failed. Please contact the administrator.");
 
-                // update password
-                if (!await Database.Client.UpdatePassword(email, password))
-                    return _responseService.Response(HttpStatusCodes.BadRequest, "Password update failed. Please contact the administrator.");
+            // success
+            _logger.LogInformation($"[{Utils.GetCurrentTime}] User {email} successfully updated the password.");
 
-                // success
-                _logger.LogInformation($"[{Utils.GetCurrentTime}] User {email} successfully updated the password.");
-
-                // need to redirect to the front-end page instead of this api
-                return _responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");
-            }
+            // need to redirect to the front-end page instead of this api
+            return _responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");
         }
     }
 }
