@@ -1,5 +1,7 @@
-﻿using System.ComponentModel;
+﻿using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 using System.Reflection;
+using System.Security.Cryptography;
 
 namespace desu_life_web_backend;
 
@@ -54,4 +56,32 @@ public static partial class Utils
             return mailAddr;
         }
     }
+
+    public static void SendMail(string mailto, string subject, string body, bool isBodyHtml)
+    {
+        var mailContent = new Mail.MailContent(new List<string> { mailto }, subject, body, isBodyHtml);
+        try
+        {
+            Mail.Send(mailContent);
+        }
+        catch { }
+    }
+
+    public static byte[] GenerateRandomKey(int bits)
+    {
+        if (bits % 8 != 0)
+        {
+            throw new ArgumentException("Key size must be a multiple of 8.");
+        }
+
+        byte[] keyBytes = new byte[bits / 8];
+
+        using (var rng = new RNGCryptoServiceProvider())
+        {
+            rng.GetBytes(keyBytes);
+        }
+
+        return keyBytes;
+    }
+
 }

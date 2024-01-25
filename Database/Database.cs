@@ -1,4 +1,5 @@
-﻿using LinqToDB;
+﻿using LanguageExt.Pretty;
+using LinqToDB;
 using LinqToDB.Common;
 using MySqlConnector;
 using static desu_life_web_backend.Database.Connection;
@@ -98,6 +99,26 @@ namespace desu_life_web_backend.Database
             if (await li.CountAsync() > 0)
                 return true;
             return false;
+        }
+
+        public static async Task<bool> CheckUserIsRegistered(string email)
+        {
+            using var db = GetInstance();
+            var li = db.Users.Where(it => it.email == email).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+                return true;
+            return false;
+        }
+
+        public static async Task<long> CheckUserIsValidity(string email, string password)
+        {
+            using var db = GetInstance();
+            var li = db.Users.Where(it => it.email == email && it.passwd == password).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+            {
+                return await li.FirstOrDefaultAsync();
+            }
+            return -1;
         }
 
         public static async Task<bool> CheckUserAccessbility(long uid, string token, string op, string platform)

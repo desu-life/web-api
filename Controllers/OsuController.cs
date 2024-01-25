@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+using static desu_life_web_backend.ReturnRequests;
 
 namespace desu_life_web_backend.Controllers.OSU
 {
@@ -25,18 +26,25 @@ namespace desu_life_web_backend.Controllers.OSU
         }
 
         [HttpGet(Name = "OsuLink")]
-        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
+        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(long? uid)
         {
+            if (!uid.HasValue)
+            {
+                return BadRequest(new SystemMsg
+                {
+                    Status = "failed",
+                    Msg = "No uid provided."
+                });
+            }
 
             // check user's links
-            if (await Database.Client.CheckCurrentUserHasLinkedOSU(8600))
+            if (await Database.Client.CheckCurrentUserHasLinkedOSU(uid!.Value))
             {
                 return BadRequest(new SystemMsg
                 {
                     Status = "failed",
                     Msg = "Your account is currently linked to osu! account."
-                }
-                );
+                });
             }
 
             string osuAuthUrl = $"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}";
@@ -73,11 +81,9 @@ namespace desu_life_web_backend.Controllers.OSU
         }
 
         [HttpGet(Name = "OsuCallBack")]
-        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
+        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string? code)
         {
-            var QueryString = Request.Query["code"].ToString();
-
-            if (QueryString == "")
+            if (code == "")
             {
                 return BadRequest(new SystemMsg
                 {
@@ -95,7 +101,7 @@ namespace desu_life_web_backend.Controllers.OSU
                     grant_type = "authorization_code",
                     client_id = config.osu!.clientId,
                     client_secret = config.osu!.clientSecret,
-                    code = QueryString,
+                    code = code,
                     redirect_uri = config.osu!.RedirectUrl
                 };
 

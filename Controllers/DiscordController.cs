@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+using static desu_life_web_backend.ReturnRequests;
 
 namespace desu_life_web_backend.Controllers.Discord
 {
@@ -78,11 +79,9 @@ namespace desu_life_web_backend.Controllers.Discord
         }
 
         [HttpGet(Name = "DiscordCallBack")]
-        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
+        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string? code)
         {
-            var QueryString = Request.Query["code"].ToString();
-
-            if (QueryString == "")
+            if (code == null)
             {
                 return BadRequest(new SystemMsg
                 {
@@ -101,7 +100,7 @@ namespace desu_life_web_backend.Controllers.Discord
                     client_id = config.discord!.clientId,
                     client_secret = config.discord!.clientSecret,
                     scope = "identify",
-                    code = QueryString,
+                    code = code,
                     redirect_uri = config.discord!.RedirectUrl
                 };
 
@@ -173,7 +172,7 @@ namespace desu_life_web_backend.Controllers.Discord
                 return BadRequest(new SystemMsg
                 {
                     Status = "failed",
-                    Msg = "An exception detected when trying to link with discord account. Please contact the administrator."
+                    Msg = "An error occurred while link with discord account. Please contact the administrator."
                 }
                 );
             }
