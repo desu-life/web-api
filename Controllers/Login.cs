@@ -45,7 +45,7 @@ namespace desu_life_web_backend.Controllers.Login
                 return _responseService.Response(HttpStatusCodes.Unauthorized, "User does not exist or password is incorrect.");
 
             // create new token
-            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr.ToLower()), Cookies.Default);
+            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr), Cookies.Default);
 
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] User {userId} logged in.");

@@ -2,6 +2,7 @@
 using LinqToDB;
 using LinqToDB.Common;
 using MySqlConnector;
+using static desu_life_web_backend.Config;
 using static desu_life_web_backend.Database.Connection;
 using static desu_life_web_backend.Database.Models;
 
@@ -130,7 +131,19 @@ namespace desu_life_web_backend.Database
                                   .Where(it => it.platform == platform)
                                   .Select(it => it.email);
             if (await li.CountAsync() > 0)
-                return true;
+            {
+                try
+                {
+                    await db.UserVerify
+                    .Where(it => it.email == email)
+                    .DeleteAsync();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
             return false;
         }
 
@@ -170,7 +183,9 @@ namespace desu_life_web_backend.Database
         public static async Task<string?> RegGetEmailAddressByVerifyToken(string token)
         {
             using var db = GetInstance();
-            return await db.UserVerify.Where(it => it.token == token).Select(it => it.email).FirstOrDefaultAsync();
+            var mailAddr = await db.UserVerify.Where(it => it.token == token).Select(it => it.email).FirstOrDefaultAsync();
+            if (!string.IsNullOrEmpty(mailAddr)) await db.UserVerify.Where(it => it.email == mailAddr).DeleteAsync();
+            return mailAddr;
         }
 
         public static async Task<bool> InsertUser(string email, string password)

@@ -129,7 +129,7 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
             return _responseService.Response(HttpStatusCodes.BadRequest, "The provided osu! account has been linked by other desu.life user.");
 
         // virefy the operation Token
-        if (!await Database.Client.CheckUserTokenValidity(mailAddr, GetVerifyTokenFromToken(HttpContext.Request.Cookies), "link", "osu"))
+        if (!await Database.Client.CheckUserTokenValidity(mailAddr, Token ?? "", "link", "osu"))
             return _responseService.Response(HttpStatusCodes.BadRequest, "Invaild Token.");
 
         // execute link

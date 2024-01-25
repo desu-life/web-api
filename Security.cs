@@ -1,4 +1,6 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using LanguageExt.ClassInstances;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using static desu_life_web_backend.JWT;
@@ -28,11 +30,11 @@ public static partial class Security
 
     public static string SetLoginToken(long uid, string mailAddr)
     {
-        Claim[] claim_set = [new("userId", $"{uid}"), new("email", mailAddr)];
+        Claim[] claim_set = [new(ClaimTypes.NameIdentifier, $"{uid}"), new(ClaimTypes.Email, mailAddr.ToLower())];
         return CreateJWTToken(claim_set, 60);
     }
 
-    public static bool GetUserInfoFromToken(IRequestCookieCollection cookies,out long UserId,out string mailAddr,out string? Token)
+    public static bool GetUserInfoFromToken(IRequestCookieCollection cookies, out long UserId, out string mailAddr, out string? Token)
     {
         UserId = 0;
         mailAddr = "";
@@ -42,15 +44,13 @@ public static partial class Security
         try
         {
             var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
-            var x = principal.FindFirst("userId");
-            if (x != null)
-                UserId = long.Parse(x.Value);
-            x = principal.FindFirst("email");
-            if (x != null)
-                mailAddr = x.Value;
-            x = principal.FindFirst("token");
-            if (x != null)
-                Token = x.Value;
+            foreach (var claim in principal.Claims) Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
+            var x = principal.FindFirst(ClaimTypes.NameIdentifier);
+            if (x != null) UserId = long.Parse(x.Value);
+            x = principal.FindFirst(ClaimTypes.Email);
+            if (x != null) mailAddr = x.Value;
+            x = principal.FindFirst(ClaimTypes.UserData);
+            if (x != null) Token = x.Value;
             return true;
         }
         catch (Exception ex)
@@ -60,36 +60,18 @@ public static partial class Security
         return false;
     }
 
-    public static string GetVerifyTokenFromToken(IRequestCookieCollection cookies)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        try
-        {
-            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
-            var x = principal.FindFirst("verifyToken");
-            if (x != null)
-            {
-                var verifyToken = x.Value;
-                return verifyToken;
-            }
-            return "";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Token validation failed: {ex.Message}");
-        }
-        return "";
-    }
-
     public static string UpdateVerifyTokenFromToken(IRequestCookieCollection cookies, string VerifyToken)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
             var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
-            var claim_set = principal.Claims;
-            _ = claim_set.Append(new Claim("verifyToken", VerifyToken));
-            return CreateJWTToken(claim_set.ToArray(), 60);
+            var claim_set = principal.Claims.ToList();
+            var existingUserDataClaim = claim_set.FirstOrDefault(c => c.Type == ClaimTypes.UserData);
+            if (existingUserDataClaim != null)
+                claim_set.Remove(existingUserDataClaim);
+            claim_set.Add(new Claim(ClaimTypes.UserData, VerifyToken));
+            return CreateJWTToken([.. claim_set], 60);
         }
         catch (Exception ex)
         {

@@ -86,6 +86,17 @@ public class ResponseService
         };
     }
 
+    public ActionResult ResponseQQVerify(HttpStatusCodes request, string token)
+    {
+        return new ObjectResult(new QQVerifyResponse
+        {
+            token = token,
+        })
+        {
+            StatusCode = (int)request
+        };
+    }
+
     public ActionResult Redirect(string url) //HttpContext httpContext)
     {
         //var redirectResult = new RedirectResult(url, true);

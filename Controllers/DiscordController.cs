@@ -130,7 +130,7 @@ namespace desu_life_web_backend.Controllers.Discord
                 return _responseService.Response(HttpStatusCodes.BadRequest, "The provided discord account has been linked by other desu.life user.");
 
             // virefy the operation Token
-            if (!await Database.Client.CheckUserTokenValidity(mailAddr, GetVerifyTokenFromToken(HttpContext.Request.Cookies), "link", "discord"))
+            if (!await Database.Client.CheckUserTokenValidity(mailAddr, Token ?? "", "link", "discord"))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Invaild Token.");
 
             // execute link
