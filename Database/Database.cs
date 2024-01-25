@@ -121,7 +121,7 @@ namespace desu_life_web_backend.Database
             return -1;
         }
 
-        public static async Task<bool> CheckUserAccessbility(long uid, string token, string op, string platform)
+        public static async Task<bool> CheckUserTokenValidity(long uid, string token, string op, string platform)
         {
             using var db = GetInstance();
             var li = db.UserVerify.Where(it => it.uid == uid)

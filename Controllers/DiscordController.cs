@@ -1,14 +1,9 @@
 using Flurl.Http;
-using Flurl.Util;
-using LanguageExt;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using static Org.BouncyCastle.Math.EC.ECCurve;
 using static desu_life_web_backend.ResponseService;
+using static desu_life_web_backend.Security;
 
 namespace desu_life_web_backend.Controllers.Discord
 {
@@ -22,42 +17,29 @@ namespace desu_life_web_backend.Controllers.Discord
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "DiscordLink")]
-        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync()
+        public async Task<ActionResult> GetAuthorizeLinkAsync(long? uid)
         {
+            // check if user token is valid
+            if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+
+            // check uid parameter
+            if (!uid.HasValue)
+                return _responseService.Response(HttpStatusCodes.BadRequest, "No uid provided.");
 
             // check user's links
-            if (await Database.Client.CheckCurrentUserHasLinkedDiscord(8600))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Your account is currently linked to discord account."
-                }
-                );
-            }
-
-            string discordAuthUrl = $"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}";
-
-            // create new token
-            if (!await Database.Client.AddVerifyToken(8600, "link", "discord", DateTimeOffset.Now.AddHours(1), "new token here"))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Token generate failed. Please contact Administrator."
-                });
-            }
+            if (await Database.Client.CheckCurrentUserHasLinkedDiscord(uid!.Value))
+                return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to discord account.");
 
 
+            // create new verify token and update
+            var token = Utils.GenerateRandomString(64);
+            HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
+            if (!await Database.Client.AddVerifyToken(uid.Value, "link", "discord", DateTimeOffset.Now.AddHours(1), token))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
 
-
-            //Response.Redirect(discordAuthUrl);
-
-            return Ok(new SystemMsg
-            {
-                Status = "success",
-                Msg = "Redirect to this URL."
-            });
+            // success
+            return _responseService.Redirect($"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}");
         }
     }
 
@@ -69,16 +51,18 @@ namespace desu_life_web_backend.Controllers.Discord
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "DiscordCallBack")]
-        public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string? code)
+        public async Task<ActionResult> GetAuthorizeLinkAsync(string? code)
         {
-            if (code == null)
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Invalid operation. Please provide a valid code."
-                });
-            }
+            // check if user token is valid
+            if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+
+            // get info from token
+            long uid = GetUserIDFromToken(HttpContext.Request.Cookies);
+
+            // check code
+            if (string.IsNullOrEmpty(code))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Invalid operation. Please provide a valid code.");
 
             // get discord temporary token
             JObject responseBody;
@@ -102,11 +86,7 @@ namespace desu_life_web_backend.Controllers.Discord
             catch (FlurlHttpException ex)
             {
                 //Console.WriteLine("Response Content: " + await ex.GetResponseStringAsync());
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}"
-                }); ;
+                return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
             }
 
             // get discord user info
@@ -121,58 +101,28 @@ namespace desu_life_web_backend.Controllers.Discord
             catch (FlurlHttpException ex)
             {
                 // Console.WriteLine("Response Content: " + await ex.GetResponseStringAsync());
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}"
-                }); ;
+                return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
             }
 
-            // get osu user id from response data
-            var discord_uid = (responseBody["id"] ?? "").ToString();
+            // get discord user id from response data
+            if (responseBody["id"] == null)
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Something went wrong with the request.");
+            var discord_uid = responseBody["id"]!.ToString();
 
-            // check if the osu user has linked to another desu.life account.
-
+            // check if the discord user has linked to another desu.life account.
             if (await Database.Client.DiscordCheckUserHasLinkedByOthers(discord_uid))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "The provided discord account has been linked by other desu.life user."
-                }
-                );
+                return _responseService.Response(HttpStatusCodes.BadRequest, "The provided discord account has been linked by other desu.life user.");
 
-            }
             // virefy the operation Token
-            // sql = "SELECT * FROM user_verify WHERE uid = '{$uid}' AND token = '{$token}' AND op = 'link' AND platform = 'osu'";
-            if (!await Database.Client.CheckUserAccessbility(8600, "new token here", "link", "discord"))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "Invaild Token."
-                }
-                );
-            }
+            if (!await Database.Client.CheckUserTokenValidity(GetUserIDFromToken(HttpContext.Request.Cookies), GetVerifyTokenFromToken(HttpContext.Request.Cookies), "link", "discord"))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Invaild Token.");
 
-            // execute link op
-            // uid=8600 *test uid
-            if (!await Database.Client.LinkDiscordAccount(8600, discord_uid))
-            {
-                return BadRequest(new SystemMsg
-                {
-                    Status = "failed",
-                    Msg = "An error occurred while link with discord account. Please contact the administrator."
-                }
-                );
-            }
+            // execute link
+            if (!await Database.Client.LinkDiscordAccount(uid, discord_uid))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while link with osu! account. Please contact the administrator.");
 
-            return Ok(new SystemMsg
-            {
-                Status = "success",
-                Msg = $"Link successfully. discord uid: {discord_uid}"
-            });
-
+            // success
+            return _responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
         }
     }
 }

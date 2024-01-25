@@ -44,7 +44,7 @@ namespace desu_life_web_backend.Controllers.Login
                 return _responseService.Response(HttpStatusCodes.Unauthorized, "User does not exist or password is incorrect.");
 
             // create new token
-            HttpContext.Response.Cookies.Append("token", JWT.CreateJWTToken(userId, null), Cookies.Login);
+            HttpContext.Response.Cookies.Append("token", JWT.SetLoginToken(userId), Cookies.Login);
 
             // success
             return _responseService.Response(HttpStatusCodes.Ok, "Successfully logged in.");
