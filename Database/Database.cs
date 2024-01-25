@@ -140,6 +140,17 @@ namespace desu_life_web_backend.Database
             return -1;
         }
 
+        public static async Task<long> CheckUserIsExsit(string email)
+        {
+            using var db = GetInstance();
+            var li = db.Users.Where(it => it.email == email).Select(it => it.uid);
+            if (await li.CountAsync() > 0)
+            {
+                return await li.FirstOrDefaultAsync();
+            }
+            return -1;
+        }
+
         public static async Task<bool> CheckUserTokenValidity(string email, string token, string op, string platform)
         {
             using var db = GetInstance();
@@ -198,12 +209,22 @@ namespace desu_life_web_backend.Database
             }
         }
 
-        public static async Task<string?> RegGetEmailAddressByVerifyToken(string token)
+        public static async Task<string?> GetEmailAddressByVerifyToken(string token, string op, string platform)
         {
             using var db = GetInstance();
-            var mailAddr = await db.UserVerify.Where(it => it.token == token).Select(it => it.email).FirstOrDefaultAsync();
-            if (!string.IsNullOrEmpty(mailAddr)) await db.UserVerify.Where(it => it.email == mailAddr).DeleteAsync();
-            return mailAddr;
+            var uv = await db.UserVerify
+                .Where(it => it.token == token)
+                .Where(it => it.op == op)
+                .Where (it => it.platform == platform)
+                .FirstOrDefaultAsync();
+            if (uv != null)
+            {
+                await db.UserVerify.Where(it => it.email == uv.email).DeleteAsync();
+                if (uv.gen_time < DateTimeOffset.Now)
+                    return null;
+                return uv.email;
+            }
+            return null;
         }
 
         public static async Task<bool> InsertUser(string email, string password)
@@ -224,6 +245,26 @@ namespace desu_life_web_backend.Database
             {
                 return false;
             }
+        }
+
+        public static async Task<bool> UpdatePassword(long uid, string password)
+        {
+            using var db = GetInstance();
+            var res = await db.Users
+                .Where(it => it.uid == uid)
+                .Set(it => it.passwd, password)
+                .UpdateAsync();
+            return res > -1;
+        }
+
+        public static async Task<bool> UpdatePassword(string mailAddr, string password)
+        {
+            using var db = GetInstance();
+            var res = await db.Users
+                .Where(it => it.email == mailAddr)
+                .Set(it => it.passwd, password)
+                .UpdateAsync();
+            return res > -1;
         }
     }
 }

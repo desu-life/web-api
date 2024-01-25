@@ -24,11 +24,11 @@ namespace desu_life_web_backend.Controllers.QQ
 
             // check if user token is valid
             if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
             // get info from token
             if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "User information check failed.");
+                return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
 
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {UserId}.");

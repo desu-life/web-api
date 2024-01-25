@@ -25,11 +25,11 @@ public class osu_linkController(ILogger<Log> logger, ResponseService responseSer
 
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
         // get info from token
         if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return _responseService.Response(HttpStatusCodes.BadRequest, "User information check failed.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
 
         // log
         _logger.LogInformation($"[{Utils.GetCurrentTime}] osu! link operation triggered by user {UserId}.");
@@ -45,7 +45,7 @@ public class osu_linkController(ILogger<Log> logger, ResponseService responseSer
         {
             // log
             _logger.LogError($"[{Utils.GetCurrentTime}] Token generate failed.");
-            return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "Token generate failed. Please contact Administrator.");
         }
             
         // success
@@ -68,11 +68,11 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
 
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
         // get info from token
         if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return _responseService.Response(HttpStatusCodes.BadRequest, "User information check failed.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
 
         // check code
         if (string.IsNullOrEmpty(code))
@@ -126,22 +126,24 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
 
         // check if the osu user has linked to another desu.life account.
         if (await Database.Client.OSUCheckUserHasLinkedByOthers(osu_uid))
-            return _responseService.Response(HttpStatusCodes.BadRequest, "The provided osu! account has been linked by other desu.life user.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "The provided osu! account has been linked by other desu.life user.");
 
         // virefy the operation Token
         if (!await Database.Client.CheckUserTokenValidity(mailAddr, Token ?? "", "link", "osu"))
-            return _responseService.Response(HttpStatusCodes.BadRequest, "Invaild Token.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "Invaild Token.");
 
         // execute link
         if (!await Database.Client.InsertOsuUser(UserId, long.Parse(osu_uid)))
         {
             // log
             _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
-            return _responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while link with osu! account. Please contact the administrator.");
+            return _responseService.Response(HttpStatusCodes.Forbidden, "An error occurred while link with osu! account. Please contact the administrator.");
         }
             
         // success
         _logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully connected to the osu! account.");
+
+        // need to redirect to the front-end page instead of this api
         return _responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
     }
 }

@@ -37,12 +37,12 @@ namespace desu_life_web_backend.Controllers.Login
 
             // check email&password
             if (string.IsNullOrEmpty(mailAddr) || string.IsNullOrEmpty(password))
-                return _responseService.Response(HttpStatusCodes.Unauthorized, "Please provide complete email or password.");
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide complete email or password.");
 
             // check user validity
             var userId = await Database.Client.CheckUserIsValidity(mailAddr, password);
             if (userId < 0)
-                return _responseService.Response(HttpStatusCodes.Unauthorized, "User does not exist or password is incorrect.");
+                return _responseService.Response(HttpStatusCodes.Forbidden, "User does not exist or password is incorrect.");
 
             // create new token
             HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr), Cookies.Default);

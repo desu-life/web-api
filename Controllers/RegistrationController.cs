@@ -36,14 +36,13 @@ namespace desu_life_web_backend.Controllers.Registration
 
             // create new verify token and update
             var token = Utils.GenerateRandomString(64);
-            HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
             if (!await Database.Client.AddVerifyToken(email, "reg", "desulife", DateTimeOffset.Now, token))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
 
             // send reg email
             try
             {
-                await Mail.SendVerificationMail(email, token, "desulife");
+                await Mail.SendVerificationMail(email, token, "desulife", "reg");
             }
             catch
             {
@@ -76,14 +75,14 @@ namespace desu_life_web_backend.Controllers.Registration
 
             // empty check
             if (string.IsNullOrEmpty(password))
-                return _responseService.Response(HttpStatusCodes.Unauthorized, "Please provide password.");
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
 
             // get email address from database by using token
-            var email = await Database.Client.RegGetEmailAddressByVerifyToken(Token);
+            var email = await Database.Client.GetEmailAddressByVerifyToken(Token, "reg", "desulife");
 
             // empty check
             if (string.IsNullOrEmpty(email))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Invalid request.");
+                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
             // execute reg
             if (!await Database.Client.InsertUser(email, password))
@@ -92,7 +91,7 @@ namespace desu_life_web_backend.Controllers.Registration
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while requesting registration");
                 return _responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while requesting registration. Please contact the administrator.");
             }
-                
+
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Email {email} successfully registered.");
             return _responseService.Response(HttpStatusCodes.Ok, "Registration success.");
