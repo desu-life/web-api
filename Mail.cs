@@ -67,7 +67,7 @@ namespace desu_life_web_backend
                 string read_html = System.IO.File.ReadAllText("./predefine_files/mail_desu_life_mailaddr_verify_template.txt");
                 string mail_subject = "[来自desu.life自动发送的邮件]请验证您的邮箱";
                 read_html = read_html.Replace("{{{{mailaddress}}}}", mailAddr).Replace("{{{{veritylink}}}}",
-                            $"https://desu.life/verify-email?mailAddr={mailAddr}&verifyCode={verifyCode}&platform={platform}&op=1");
+                            $"https://desu.life/verify-email?mailAddr={mailAddr}&verifyCode={verifyCode}&platform={platform}");
                 try
                 {
                     Utils.SendMail(mailAddr, mail_subject, read_html, true);

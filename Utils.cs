@@ -107,4 +107,9 @@ public static partial class Utils
 
         return new string(chars);
     }
+
+    public static string GetCurrentTime()
+    {
+        return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
 }

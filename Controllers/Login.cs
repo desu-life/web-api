@@ -1,14 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using static desu_life_web_backend.Database.Models;
 using static desu_life_web_backend.ResponseService;
 
 namespace desu_life_web_backend.Controllers.Login
 {
     [ApiController]
     [Route("[controller]")]
-    public class logoutController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
+    public class logoutController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
-        private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "Logout")]
@@ -21,10 +22,10 @@ namespace desu_life_web_backend.Controllers.Login
 
 
     [Route("[controller]")]
-    public class loginController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
+    public class loginController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
-        private readonly ILogger<SystemMsg> _logger = logger;
+        private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "Login")]
@@ -32,7 +33,7 @@ namespace desu_life_web_backend.Controllers.Login
         {
             // check if user token is valid
             if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
+                return _responseService.Response(HttpStatusCodes.NoContent, ""); //"Already logged in.");
 
             // check email&password
             if (string.IsNullOrEmpty(mailAddr) || string.IsNullOrEmpty(password))
@@ -44,9 +45,10 @@ namespace desu_life_web_backend.Controllers.Login
                 return _responseService.Response(HttpStatusCodes.Unauthorized, "User does not exist or password is incorrect.");
 
             // create new token
-            HttpContext.Response.Cookies.Append("token", JWT.SetLoginToken(userId), Cookies.Login);
+            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr.ToLower()), Cookies.Default);
 
             // success
+            _logger.LogInformation($"[{Utils.GetCurrentTime}] User {userId} logged in.");
             return _responseService.Response(HttpStatusCodes.Ok, "Successfully logged in.");
         }
     }

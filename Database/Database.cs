@@ -37,16 +37,16 @@ namespace desu_life_web_backend.Database
 
 
 
-        public static async Task<bool> AddVerifyToken(long uid, string op, string platform, DateTimeOffset time, string token)
+        public static async Task<bool> AddVerifyToken(string mailAddr, string op, string platform, DateTimeOffset time, string token)
         {
             using var db = GetInstance();
             var newverify = new UserVerify()
             {
-                uid = uid,
+                email = mailAddr,
                 op = op,
                 platform = platform,
-                time = time,
-                token = token
+                token = token,
+                gen_time = time
             };
 
             try
@@ -121,14 +121,14 @@ namespace desu_life_web_backend.Database
             return -1;
         }
 
-        public static async Task<bool> CheckUserTokenValidity(long uid, string token, string op, string platform)
+        public static async Task<bool> CheckUserTokenValidity(string email, string token, string op, string platform)
         {
             using var db = GetInstance();
-            var li = db.UserVerify.Where(it => it.uid == uid)
+            var li = db.UserVerify.Where(it => it.email == email)
                                   .Where(it => it.token == token)
                                   .Where(it => it.op == op)
                                   .Where(it => it.platform == platform)
-                                  .Select(it => it.uid);
+                                  .Select(it => it.email);
             if (await li.CountAsync() > 0)
                 return true;
             return false;
@@ -155,6 +155,32 @@ namespace desu_life_web_backend.Database
                 osu_mode = "osu",
                 customInfoEngineVer = 2,
                 InfoPanelV2_Mode = 1
+            };
+            try
+            {
+                await db.InsertAsync(d);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<string?> RegGetEmailAddressByVerifyToken(string token)
+        {
+            using var db = GetInstance();
+            return await db.UserVerify.Where(it => it.token == token).Select(it => it.email).FirstOrDefaultAsync();
+        }
+
+        public static async Task<bool> InsertUser(string email, string password)
+        {
+            using var db = GetInstance();
+            var d = new User()
+            {
+                email = email,
+                passwd = password,
+                permissions = "user",
             };
             try
             {

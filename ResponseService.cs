@@ -86,18 +86,6 @@ public class ResponseService
         };
     }
 
-    public ActionResult<SystemMsg> ResponseSystemMsg(HttpStatusCodes request, string message)
-    {
-        return new ObjectResult(new SystemMsg
-        {
-            Status = Enum.GetName(typeof(HttpStatusCodes), request) ?? "unknown",
-            Msg = message
-        })
-        {
-            StatusCode = (int)request
-        };
-    }
-
     public ActionResult Redirect(string url) //HttpContext httpContext)
     {
         //var redirectResult = new RedirectResult(url, true);

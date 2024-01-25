@@ -12,34 +12,37 @@ public static partial class JWT
 
     static JWT()
     {
+        KeyChecker();
         validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
             IssuerSigningKey = key,
             ValidIssuer = "desu.life",
             ValidAudience = "desu.life"
         };
-        KeyChecker();
         creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
     }
 
     public static bool CheckJWTTokenIsVaild(IRequestCookieCollection cookies)
     {
-        if (ValidateJWTToken(cookies["token"] ?? ""))
+        var x = cookies["token"];
+        if (string.IsNullOrEmpty(x))
+            return false;
+        if (ValidateJWTToken(x))
             return true;
         return false;
     }
 
-    public static string CreateJWTToken(Claim[] claim_set, DateTime? expires)
+    public static string CreateJWTToken(Claim[] claim_set, long expires_min)
     {
-        if (!expires.HasValue) expires = DateTime.Now.AddMinutes(10);
         var token = new JwtSecurityToken(
             issuer: "desu.life",
             audience: "desu.life",
             claims: claim_set,
-            expires: expires,
+            expires: DateTime.Now.AddMinutes(expires_min),
             signingCredentials: creds
         );
 
@@ -51,8 +54,7 @@ public static partial class JWT
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            SecurityToken validatedToken;
-            var principal = tokenHandler.ValidateToken(token, validationParameters, out validatedToken);
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
             return true;
         }
         catch

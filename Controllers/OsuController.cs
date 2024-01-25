@@ -5,59 +5,74 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static desu_life_web_backend.ResponseService;
 using static desu_life_web_backend.Security;
+using static LinqToDB.Common.Configuration;
 
 namespace desu_life_web_backend.Controllers.OSU;
 
 [ApiController]
 [Route("[controller]")]
-public class osu_linkController(ILogger logger, ResponseService responseService) : ControllerBase
+public class osu_linkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
     private static Config.Base config = Config.inner!;
-    private readonly ILogger _logger = logger;
+    private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
     [HttpGet(Name = "OsuLink")]
-    public async Task<ActionResult> GetAuthorizeLinkAsync(long? uid)
+    public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
+        // log
+        _logger.LogInformation($"[{Utils.GetCurrentTime}] osu! Link started by anonymous user.");
+
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
             return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
-        // check uid parameter
-        if (!uid.HasValue)
-            return _responseService.Response(HttpStatusCodes.BadRequest, "No uid provided.");
+        // get info from token
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
+            return _responseService.Response(HttpStatusCodes.BadRequest, "User information check failed.");
+
+        // log
+        _logger.LogInformation($"[{Utils.GetCurrentTime}] osu! link operation triggered by user {UserId}.");
 
         // check user's links
-        if (await Database.Client.CheckCurrentUserHasLinkedOSU(uid!.Value))
+        if (await Database.Client.CheckCurrentUserHasLinkedOSU(UserId))
             return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to osu! account.");
 
         // create new verify token and update
         var token = Utils.GenerateRandomString(64);
         HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
-        if (!await Database.Client.AddVerifyToken(uid.Value, "link", "osu", DateTimeOffset.Now.AddHours(1), token))
+        if (!await Database.Client.AddVerifyToken(mailAddr, "link", "osu", DateTimeOffset.Now.AddHours(1), token))
+        {
+            // log
+            _logger.LogError($"[{Utils.GetCurrentTime}] Token generate failed.");
             return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
-
+        }
+            
         // success
         return _responseService.Redirect($"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}");
     }
 }
 
 [Route("/callback/[controller]")]
-public class osu_callbackController(ILogger<SystemMsg> logger, ResponseService responseService) : ControllerBase
+public class osu_callbackController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
     private static Config.Base config = Config.inner!;
-    private readonly ILogger<SystemMsg> _logger = logger;
+    private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
     [HttpGet(Name = "OsuCallBack")]
-    public async Task<ActionResult<SystemMsg>> GetAuthorizeLinkAsync(string? code)
+    public async Task<ActionResult> GetAuthorizeLinkAsync(string? code)
     {
+        // log
+        _logger.LogInformation($"[{Utils.GetCurrentTime}] osu! Callback triggerd.");
+
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
             return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
         // get info from token
-        long uid = GetUserIDFromToken(HttpContext.Request.Cookies);
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
+            return _responseService.Response(HttpStatusCodes.BadRequest, "User information check failed.");
 
         // check code
         if (string.IsNullOrEmpty(code))
@@ -83,6 +98,8 @@ public class osu_callbackController(ILogger<SystemMsg> logger, ResponseService r
         }
         catch (FlurlHttpException ex)
         {
+            // log
+            _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
             return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
         }
 
@@ -97,7 +114,8 @@ public class osu_callbackController(ILogger<SystemMsg> logger, ResponseService r
         }
         catch (FlurlHttpException ex)
         {
-            //_logger.LogError();
+            // log
+            _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
             return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
         }
 
@@ -111,14 +129,19 @@ public class osu_callbackController(ILogger<SystemMsg> logger, ResponseService r
             return _responseService.Response(HttpStatusCodes.BadRequest, "The provided osu! account has been linked by other desu.life user.");
 
         // virefy the operation Token
-        if (!await Database.Client.CheckUserTokenValidity(uid, GetVerifyTokenFromToken(HttpContext.Request.Cookies), "link", "osu"))
+        if (!await Database.Client.CheckUserTokenValidity(mailAddr, GetVerifyTokenFromToken(HttpContext.Request.Cookies), "link", "osu"))
             return _responseService.Response(HttpStatusCodes.BadRequest, "Invaild Token.");
 
         // execute link
-        if (!await Database.Client.InsertOsuUser(uid, long.Parse(osu_uid)))
+        if (!await Database.Client.InsertOsuUser(UserId, long.Parse(osu_uid)))
+        {
+            // log
+            _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
             return _responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while link with osu! account. Please contact the administrator.");
-
+        }
+            
         // success
+        _logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully connected to the osu! account.");
         return _responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
     }
 }

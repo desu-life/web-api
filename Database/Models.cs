@@ -75,7 +75,7 @@ namespace desu_life_web_backend.Database
         public class UserVerify
         {
             [Column]
-            public long uid { get; set; }
+            public string? email { get; set; }
 
             [PrimaryKey]
             public string? token { get; set; }
@@ -87,7 +87,7 @@ namespace desu_life_web_backend.Database
             public string? platform { get; set; }
 
             [Column]
-            public DateTimeOffset time { get; set; }
+            public DateTimeOffset gen_time { get; set; }
         }
     }
 }

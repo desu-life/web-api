@@ -36,6 +36,9 @@ namespace desu_life_web_backend
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            //builder.Services.AddLogging();
+            builder.Services.AddSingleton<ResponseService>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
