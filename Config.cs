@@ -9,6 +9,14 @@ namespace desu_life_web_backend
     {
         public static Base? inner;
 
+        public class API : ITomlMetadataProvider
+        {
+            public string? apiHost { get; set; }
+            public int apiPort { get; set; }
+            public bool useSSL { get; set; }
+            TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
+        }
+
         public class Mail : ITomlMetadataProvider
         {
             public string? smtpHost { get; set; }
@@ -55,8 +63,8 @@ namespace desu_life_web_backend
 
         public class Base : ITomlMetadataProvider
         {
-            public bool debug { get; set; }
             public bool dev { get; set; }
+            public API? api { get; set; }
             public OSU? osu { get; set; }
             public Database? database { get; set; }
             public Mail? mail { get; set; }
@@ -67,8 +75,13 @@ namespace desu_life_web_backend
             {
                 return new Base()
                 {
-                    debug = true,
                     dev = true,
+                    api = new()
+                    {
+                        apiHost = "localhost",
+                        apiPort = 5500,
+                        useSSL = false
+                    },
                     osu = new()
                     {
                         clientId = 0,

@@ -15,6 +15,7 @@ namespace desu_life_web_backend
     {
         public static void Main(string[] args)
         {
+            Console.Clear();
             var configPath = "config.toml";
             if (File.Exists(configPath))
             {
@@ -42,7 +43,7 @@ namespace desu_life_web_backend
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            if (config.dev)
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
@@ -50,11 +51,16 @@ namespace desu_life_web_backend
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            string baseUrl = "http://";
 
+            if (config.api!.useSSL)
+            {
+                app.UseHttpsRedirection();
+                baseUrl = "https://";
+            }
 
+            app.Urls.Add($"{baseUrl}{config.api.apiHost}:{config.api.apiPort}");
             app.MapControllers();
-
             app.Run();
         }
     }

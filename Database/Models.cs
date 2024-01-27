@@ -89,5 +89,15 @@ namespace desu_life_web_backend.Database
             [Column]
             public DateTimeOffset gen_time { get; set; }
         }
+
+        [Table("users_qqguild")]
+        public class UserQQGuild
+        {
+            [Column]
+            public long uid { get; set; }
+
+            [Column]
+            public string? guild_id { get; set; }
+        }
     }
 }

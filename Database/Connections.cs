@@ -14,6 +14,6 @@ public class Connection : LinqToDB.Data.DataConnection
     public ITable<User> Users => this.GetTable<User>();
     public ITable<UserOSU> UsersOSU => this.GetTable<UserOSU>();
     public ITable<UserVerify> UserVerify => this.GetTable<UserVerify>();
-
+    public ITable<UserQQGuild> UserQQGuild => this.GetTable<UserQQGuild>();
 }
 

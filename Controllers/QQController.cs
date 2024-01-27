@@ -33,10 +33,6 @@ namespace desu_life_web_backend.Controllers.QQ
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {UserId}.");
 
-            // check user's links
-            if (await Database.Client.CheckCurrentUserHasLinkedDiscord(UserId))
-                return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to discord account.");
-
             // create new verify token and update
             var token = Utils.GenerateRandomString(64);
             HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
