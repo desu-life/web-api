@@ -45,6 +45,19 @@ namespace desu_life_web_backend.Database
         public static async Task<bool> AddVerifyToken(string mailAddr, string op, string platform, DateTimeOffset time, string token)
         {
             using var db = GetInstance();
+
+            // token唯一性
+            try
+            {
+                await db.UserVerify
+                .Where(it => it.email == mailAddr)
+                .DeleteAsync();
+            }
+            catch
+            {
+                return false;
+            }
+
             var newverify = new UserVerify()
             {
                 email = mailAddr,
