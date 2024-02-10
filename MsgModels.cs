@@ -16,6 +16,8 @@ namespace desu_life_web_backend
     {
         public long? uid { get; set; }
 
+        public string? username { get; set; }
+
         public string? email { get; set; }
 
         public long? osu_uid { get; set; }

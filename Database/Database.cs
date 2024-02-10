@@ -42,42 +42,6 @@ namespace desu_life_web_backend.Database
             return await db.Users.Where(it => it.uid == userId).FirstOrDefaultAsync();
         }
 
-        public static async Task<bool> AddVerifyToken(string mailAddr, string op, string platform, DateTimeOffset time, string token)
-        {
-            using var db = GetInstance();
-
-            // token唯一性
-            try
-            {
-                await db.UserVerify
-                .Where(it => it.email == mailAddr)
-                .DeleteAsync();
-            }
-            catch
-            {
-                return false;
-            }
-
-            var newverify = new UserVerify()
-            {
-                email = mailAddr,
-                op = op,
-                platform = platform,
-                token = token,
-                gen_time = time
-            };
-
-            try
-            {
-                await db.InsertAsync(newverify);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         public static async Task<bool> OSUCheckUserHasLinkedByOthers(string osu_uid)
         {
             return await OSUCheckUserHasLinkedByOthers(long.Parse(osu_uid));
@@ -164,31 +128,6 @@ namespace desu_life_web_backend.Database
             return -1;
         }
 
-        public static async Task<bool> CheckUserTokenValidity(string email, string token, string op, string platform)
-        {
-            using var db = GetInstance();
-            var li = db.UserVerify.Where(it => it.email == email)
-                                  .Where(it => it.token == token)
-                                  .Where(it => it.op == op)
-                                  .Where(it => it.platform == platform)
-                                  .Select(it => it.email);
-            if (await li.CountAsync() > 0)
-            {
-                try
-                {
-                    await db.UserVerify
-                    .Where(it => it.email == email)
-                    .DeleteAsync();
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-            return false;
-        }
-
         public static async Task<bool> LinkDiscordAccount(long uid, string discord_uid)
         {
             using var db = GetInstance();
@@ -222,25 +161,7 @@ namespace desu_life_web_backend.Database
             }
         }
 
-        public static async Task<string?> GetEmailAddressByVerifyToken(string token, string op, string platform)
-        {
-            using var db = GetInstance();
-            var uv = await db.UserVerify
-                .Where(it => it.token == token)
-                .Where(it => it.op == op)
-                .Where (it => it.platform == platform)
-                .FirstOrDefaultAsync();
-            if (uv != null)
-            {
-                await db.UserVerify.Where(it => it.email == uv.email).DeleteAsync();
-                if (uv.gen_time < DateTimeOffset.Now)
-                    return null;
-                return uv.email;
-            }
-            return null;
-        }
-
-        public static async Task<bool> InsertUser(string email, string password)
+        public static async Task<bool> InsertUser(string email, string password,string username)
         {
             using var db = GetInstance();
             var d = new User()
@@ -248,6 +169,7 @@ namespace desu_life_web_backend.Database
                 email = email,
                 passwd = password,
                 permissions = "user",
+                username = username
             };
             try
             {

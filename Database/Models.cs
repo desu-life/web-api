@@ -16,6 +16,9 @@ namespace desu_life_web_backend.Database
             public string? email { get; set; }
 
             [Column]
+            public string? username { get; set; }
+
+            [Column]
             public string? passwd { get; set; }
 
             [Column]

@@ -17,7 +17,7 @@ namespace desu_life_web_backend.Controllers.QQ
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "QQLink")]
-        public async Task<ActionResult> GetAuthorizeLinkAsync()
+        public ActionResult GetAuthorizeLink()
         {
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link started by anonymous user.");
@@ -33,17 +33,8 @@ namespace desu_life_web_backend.Controllers.QQ
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {UserId}.");
 
-            // create new verify token and update
-            var token = Utils.GenerateRandomString(64);
-            HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
-
             // *注：qq的开发者id申请不下来，只能用手输token的方式验证了
-            if (!await Database.Client.AddVerifyToken(mailAddr, "link", "qq", DateTimeOffset.Now.AddHours(1), token))
-            {
-                // log
-                _logger.LogError($"[{Utils.GetCurrentTime}] Token generate failed.");
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
-            }
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "reg");
 
             // success
             return _responseService.ResponseQQVerify(HttpStatusCodes.Ok, token);

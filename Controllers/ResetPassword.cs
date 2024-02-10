@@ -34,9 +34,7 @@ namespace desu_life_web_backend.Controllers.ResetPassword
                 return _responseService.Response(HttpStatusCodes.Forbidden, "User does not exist.");
 
             // create new verify token and update
-            var token = Utils.GenerateRandomString(64);
-            if (!await Database.Client.AddVerifyToken(mailAddr, "resetPassword", "desulife", DateTimeOffset.Now, token))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), mailAddr, "resetpw");
 
             // send reg email
             try
@@ -63,7 +61,7 @@ namespace desu_life_web_backend.Controllers.ResetPassword
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "ResetPassword")]
-        public async Task<ActionResult> ExecuteResetPasswordAsync(string password, string Token)
+        public async Task<ActionResult> ExecuteResetPasswordAsync(string password, string email, string Token)
         {
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
@@ -76,12 +74,14 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             if (string.IsNullOrEmpty(password))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
 
-            // get email address from database by using token
-            var email = await Database.Client.GetEmailAddressByVerifyToken(Token, "resetPassword", "desulife");
-
             // empty check
             if (string.IsNullOrEmpty(email))
                 return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+
+            // check if token is vaild
+            var tempTokenData = Token.Split("[%*#]");
+            if (Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), email, "resetpw") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
 
             // update password
             if (!await Database.Client.UpdatePassword(email, password))

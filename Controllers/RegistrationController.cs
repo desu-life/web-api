@@ -2,6 +2,8 @@ using Flurl.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using static desu_life_web_backend.Database.Models;
 using static desu_life_web_backend.ResponseService;
 using static desu_life_web_backend.Security;
@@ -35,9 +37,7 @@ namespace desu_life_web_backend.Controllers.Registration
                 return _responseService.Response(HttpStatusCodes.Conflict, "The provided email address has been registered.");
 
             // create new verify token and update
-            var token = Utils.GenerateRandomString(64);
-            if (!await Database.Client.AddVerifyToken(email, "reg", "desulife", DateTimeOffset.Now, token))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), email, "reg");
 
             // send reg email
             try
@@ -64,7 +64,7 @@ namespace desu_life_web_backend.Controllers.Registration
         private readonly ResponseService _responseService = responseService;
 
         [HttpGet(Name = "SetAccount")]
-        public async Task<ActionResult> GetAuthorizeLinkAsync(string password, string Token)
+        public async Task<ActionResult> GetAuthorizeLinkAsync(string password, string email, string username, string Token)
         {
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Account Set started by anonymous user.");
@@ -77,15 +77,13 @@ namespace desu_life_web_backend.Controllers.Registration
             if (string.IsNullOrEmpty(password))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
 
-            // get email address from database by using token
-            var email = await Database.Client.GetEmailAddressByVerifyToken(Token, "reg", "desulife");
-
-            // empty check
-            if (string.IsNullOrEmpty(email))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+            // check if token is vaild
+            var tempTokenData = Token.Split("[%*#]");
+            if (Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), email, "reg") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
 
             // execute reg
-            if (!await Database.Client.InsertUser(email, password))
+            if (!await Database.Client.InsertUser(email, password, username))
             {
                 // log
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while requesting registration");

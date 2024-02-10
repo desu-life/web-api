@@ -1,8 +1,11 @@
 ﻿using LanguageExt.ClassInstances;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using System.Data.SqlTypes;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using static desu_life_web_backend.JWT;
 
 namespace desu_life_web_backend;
@@ -10,6 +13,7 @@ namespace desu_life_web_backend;
 public static partial class Security
 {
     public static SymmetricSecurityKey? key { get; set; }
+    public static string? Salt { get; set; }
 
     public static void KeyChecker()
     {
@@ -24,6 +28,19 @@ public static partial class Security
         {
             byte[] keyBytes = File.ReadAllBytes("secretKey");
             key = new SymmetricSecurityKey(keyBytes);
+            Console.WriteLine("Key loaded from file.");
+        }
+
+        if (!File.Exists("Salt"))
+        {
+            Salt = Utils.GenerateRandomString(256);
+            byte[] SaltBytes = System.Text.Encoding.UTF8.GetBytes(Salt);
+            File.WriteAllBytes("Salt", SaltBytes);
+            Console.WriteLine("New Salt saved & loaded.");
+        }
+        else
+        {
+            Salt = File.ReadAllBytes("Salt").ToString();
             Console.WriteLine("Key loaded from file.");
         }
     }
@@ -78,5 +95,18 @@ public static partial class Security
             Console.WriteLine($"Token validation failed: {ex.Message}");
         }
         return "";
+    }
+
+    public static string GenerateVerifyToken(long timestamp, string email, string op)
+    {
+        string toBeHashed = $"{timestamp}[%*#]{email}[%*#]{op}[%*#]{Salt}";
+
+        byte[] hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(toBeHashed));
+        StringBuilder sb = new();
+        for (int i = 0; i < hashBytes.Length; i++)
+        {
+            sb.Append(hashBytes[i].ToString("x2"));
+        }
+        return $"{timestamp}[%*#]{sb}";
     }
 }

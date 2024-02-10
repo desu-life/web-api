@@ -39,17 +39,10 @@ namespace desu_life_web_backend.Controllers.Discord
                 return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to discord account.");
 
             // create new verify token and update
-            var token = Utils.GenerateRandomString(64);
-            HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
-            if (!await Database.Client.AddVerifyToken(mailAddr, "link", "discord", DateTimeOffset.Now.AddHours(1), token))
-            {
-                // log
-                _logger.LogError($"[{Utils.GetCurrentTime}] Token generate failed.");
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Token generate failed. Please contact Administrator.");
-            }
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "discordlink");
 
             // success
-            return _responseService.Redirect($"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}");
+            return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}"));
         }
     }
 
@@ -129,10 +122,6 @@ namespace desu_life_web_backend.Controllers.Discord
             if (await Database.Client.DiscordCheckUserHasLinkedByOthers(discord_uid))
                 return _responseService.Response(HttpStatusCodes.Forbidden, "The provided discord account has been linked by other desu.life user.");
 
-            // virefy the operation Token
-            if (!await Database.Client.CheckUserTokenValidity(mailAddr, Token ?? "", "link", "discord"))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "Invaild Token.");
-
             // execute link
             if (!await Database.Client.LinkDiscordAccount(UserId, discord_uid))
             {
@@ -140,7 +129,7 @@ namespace desu_life_web_backend.Controllers.Discord
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
                 return _responseService.Response(HttpStatusCodes.Forbidden, "An error occurred while link with osu! account. Please contact the administrator.");
             }
-                
+
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully linked to the discord account.");
 

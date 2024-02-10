@@ -28,6 +28,10 @@ namespace desu_life_web_backend
             }
             var config = Config.inner!;
 
+
+            // security check
+            Security.KeyChecker();
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.

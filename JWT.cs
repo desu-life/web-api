@@ -12,7 +12,6 @@ public static partial class JWT
 
     static JWT()
     {
-        KeyChecker();
         validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,

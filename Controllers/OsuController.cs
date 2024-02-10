@@ -38,18 +38,8 @@ public class osu_linkController(ILogger<Log> logger, ResponseService responseSer
         if (await Database.Client.CheckCurrentUserHasLinkedOSU(UserId))
             return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to osu! account.");
 
-        // create new verify token and update
-        var token = Utils.GenerateRandomString(64);
-        HttpContext.Response.Cookies.Append("token", UpdateVerifyTokenFromToken(HttpContext.Request.Cookies, token), Cookies.Default);
-        if (!await Database.Client.AddVerifyToken(mailAddr, "link", "osu", DateTimeOffset.Now.AddHours(1), token))
-        {
-            // log
-            _logger.LogError($"[{Utils.GetCurrentTime}] Token generate failed.");
-            return _responseService.Response(HttpStatusCodes.Forbidden, "Token generate failed. Please contact Administrator.");
-        }
-            
         // success
-        return _responseService.Redirect($"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}");
+        return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}"));
     }
 }
 
@@ -128,10 +118,6 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
         if (await Database.Client.OSUCheckUserHasLinkedByOthers(osu_uid))
             return _responseService.Response(HttpStatusCodes.Forbidden, "The provided osu! account has been linked by other desu.life user.");
 
-        // virefy the operation Token
-        if (!await Database.Client.CheckUserTokenValidity(mailAddr, Token ?? "", "link", "osu"))
-            return _responseService.Response(HttpStatusCodes.Forbidden, "Invaild Token.");
-
         // execute link
         if (!await Database.Client.InsertOsuUser(UserId, long.Parse(osu_uid)))
         {
@@ -139,7 +125,7 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
             _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
             return _responseService.Response(HttpStatusCodes.Forbidden, "An error occurred while link with osu! account. Please contact the administrator.");
         }
-            
+
         // success
         _logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully connected to the osu! account.");
 

@@ -102,6 +102,7 @@ public class ResponseService
         UserResponse responseUser = new UserResponse()
         {
             uid = UserInfo.uid,
+            username = UserInfo.username,
             email = UserInfo.email,
             osu_uid = oid == -1 ? null : oid,
             qq_id = UserInfo.qq_id == 0 ? null : UserInfo.qq_id,
