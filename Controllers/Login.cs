@@ -32,8 +32,8 @@ namespace desu_life_web_backend.Controllers.Login
         public async Task<ActionResult> ExecuteLoginAsync(string? mailAddr, string? password)
         {
             // check if user token is valid
-            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.NoContent, ""); //"Already logged in.");
+            // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+            //     return _responseService.Response(HttpStatusCodes.NoContent, ""); //"Already logged in.");
 
             // check email&password
             if (string.IsNullOrEmpty(mailAddr) || string.IsNullOrEmpty(password))
@@ -42,7 +42,7 @@ namespace desu_life_web_backend.Controllers.Login
             // check user validity
             var userId = await Database.Client.CheckUserIsValidity(mailAddr, password);
             if (userId < 0)
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User does not exist or password is incorrect.");
+                return _responseService.Response(HttpStatusCodes.BadRequest, "User does not exist or password is incorrect.");
 
             // create new token
             HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr), Cookies.Default);

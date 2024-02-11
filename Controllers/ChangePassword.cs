@@ -22,11 +22,11 @@ namespace desu_life_web_backend.Controllers.ChangePassword
         {
             // check if user token is valid
             if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
             // get info from token
             if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
 
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Get user information triggered by user {UserId}.");
@@ -38,12 +38,12 @@ namespace desu_life_web_backend.Controllers.ChangePassword
                 // log
                 _logger.LogWarning($"[{Utils.GetCurrentTime}] User {UserId} logged in but not found in database. Perform a forced logout. May be a database issue.");
                 HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User logged in but not found in database.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "User logged in but not found in database.");
             }
 
             // update password
             if(!await Database.Client.UpdatePassword(UserId, password))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Password update failed. Please contact the administrator.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "Password update failed. Please contact the administrator.");
 
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully updated the password.");

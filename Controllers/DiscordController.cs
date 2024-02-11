@@ -25,18 +25,18 @@ namespace desu_life_web_backend.Controllers.Discord
 
             // check if user token is valid
             if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
             // get info from token
             if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
 
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Discord link operation triggered by user {UserId}.");
 
             // check user's links
             if (await Database.Client.CheckCurrentUserHasLinkedDiscord(UserId))
-                return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to discord account.");
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to discord account.");
 
             // create new verify token and update
             var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "discordlink");
@@ -61,11 +61,11 @@ namespace desu_life_web_backend.Controllers.Discord
 
             // check if user token is valid
             if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+                return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
             // get info from token
             if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
 
             // check code
             if (string.IsNullOrEmpty(code))
@@ -94,7 +94,7 @@ namespace desu_life_web_backend.Controllers.Discord
             {
                 // log
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-                return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
             }
 
             // get discord user info
@@ -110,12 +110,12 @@ namespace desu_life_web_backend.Controllers.Discord
             {
                 // log
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-                return _responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
             }
 
             // get discord user id from response data
             if (responseBody["id"] == null)
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Something went wrong with the request.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "Something went wrong with the request.");
             var discord_uid = responseBody["id"]!.ToString();
 
             // check if the discord user has linked to another desu.life account.
@@ -127,7 +127,7 @@ namespace desu_life_web_backend.Controllers.Discord
             {
                 // log
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
-                return _responseService.Response(HttpStatusCodes.Forbidden, "An error occurred while link with osu! account. Please contact the administrator.");
+                return _responseService.Response(HttpStatusCodes.InternalServerError, "An error occurred while link with osu! account. Please contact the administrator.");
             }
 
             // success

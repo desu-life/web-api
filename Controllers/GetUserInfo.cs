@@ -25,7 +25,7 @@ public class get_userController(ILogger<Log> logger, ResponseService responseSer
 
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+            return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
         // get info from token
         if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))

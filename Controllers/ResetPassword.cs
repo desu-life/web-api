@@ -25,8 +25,8 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset verify started by anonymous user.");
 
             // check if user logged in
-            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.Found, "");
+            // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+            //     return _responseService.Response(HttpStatusCodes.Found, "");
 
             // check user validity
             var userId = await Database.Client.CheckUserIsExsit(mailAddr);
@@ -67,8 +67,8 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
 
             // check if the user is logged in
-            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
+            // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+            //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
             // empty check
             if (string.IsNullOrEmpty(password))

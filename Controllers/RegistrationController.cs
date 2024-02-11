@@ -25,8 +25,8 @@ namespace desu_life_web_backend.Controllers.Registration
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Account registration started by anonymous user.");
 
             // check if the user is logged in
-            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
+            // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+            //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
             // empty check
             if (string.IsNullOrEmpty(email))
@@ -70,8 +70,8 @@ namespace desu_life_web_backend.Controllers.Registration
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Account Set started by anonymous user.");
 
             // check if the user is logged in
-            if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-                return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
+            // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
+            //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
             // empty check
             if (string.IsNullOrEmpty(password))
