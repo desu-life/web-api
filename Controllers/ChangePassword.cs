@@ -17,8 +17,8 @@ namespace desu_life_web_backend.Controllers.ChangePassword
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "ChangePassword")]
-        public async Task<ActionResult> ExecuteChangePasswordAsync(string password)
+        [HttpPost(Name = "ChangePassword")]
+        public async Task<ActionResult> ExecuteChangePasswordAsync([FromBody] ChangePasswordRequest request)
         {
             // check if user token is valid
             if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
@@ -27,6 +27,10 @@ namespace desu_life_web_backend.Controllers.ChangePassword
             // get info from token
             if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
                 return _responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
+
+            // check password
+            if (string.IsNullOrEmpty(request.NewPassword))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide new password.");
 
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Get user information triggered by user {UserId}.");
@@ -42,7 +46,7 @@ namespace desu_life_web_backend.Controllers.ChangePassword
             }
 
             // update password
-            if(!await Database.Client.UpdatePassword(UserId, password))
+            if(!await Database.Client.UpdatePassword(UserId, request.NewPassword))
                 return _responseService.Response(HttpStatusCodes.InternalServerError, "Password update failed. Please contact the administrator.");
 
             // success

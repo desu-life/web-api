@@ -1,5 +1,6 @@
 using Flurl.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Security.Cryptography;
@@ -18,7 +19,7 @@ namespace desu_life_web_backend.Controllers.Registration
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "Registration")]
+        [HttpPost(Name = "Registration")]
         public async Task<ActionResult> ExecuteLinkAsync(string email)
         {
             // log
@@ -63,8 +64,9 @@ namespace desu_life_web_backend.Controllers.Registration
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "SetAccount")]
-        public async Task<ActionResult> GetAuthorizeLinkAsync(string password, string email, string username, string Token)
+        [HttpPost(Name = "SetAccount")]
+        public async Task<ActionResult> GetAuthorizeLinkAsync([FromBody] RegistrationRequest request)
+        //(string password, string email, string username, string Token)
         {
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Account Set started by anonymous user.");
@@ -74,16 +76,17 @@ namespace desu_life_web_backend.Controllers.Registration
             //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
             // empty check
-            if (string.IsNullOrEmpty(password))
-                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
+            if (string.IsNullOrEmpty(request.Password) || string.IsNullOrEmpty(request.Token) ||
+                string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.MailAddress))
+                return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide full information.");
 
             // check if token is vaild
-            var tempTokenData = Token.Split("[%*#]");
-            if (Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), email, "reg") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+            var tempTokenData = request.Token.Split("[%*#]");
+            if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "reg") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
 
             // execute reg
-            if (!await Database.Client.InsertUser(email, password, username))
+            if (!await Database.Client.InsertUser(request.MailAddress, request.Password, request.Username))
             {
                 // log
                 _logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while requesting registration");
@@ -91,7 +94,7 @@ namespace desu_life_web_backend.Controllers.Registration
             }
 
             // success
-            _logger.LogInformation($"[{Utils.GetCurrentTime}] Email {email} successfully registered.");
+            _logger.LogInformation($"[{Utils.GetCurrentTime}] Email {request.MailAddress} successfully registered.");
             return _responseService.Response(HttpStatusCodes.Ok, "Registration success.");
         }
     }

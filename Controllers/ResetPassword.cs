@@ -31,7 +31,7 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             // check user validity
             var userId = await Database.Client.CheckUserIsExsit(mailAddr);
             if (userId < 0)
-                return _responseService.Response(HttpStatusCodes.Forbidden, "User does not exist.");
+                return _responseService.Response(HttpStatusCodes.Forbidden, "Invaild Operation.");
 
             // create new verify token and update
             var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), mailAddr, "resetpw");
@@ -60,8 +60,9 @@ namespace desu_life_web_backend.Controllers.ResetPassword
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "ResetPassword")]
-        public async Task<ActionResult> ExecuteResetPasswordAsync(string password, string email, string Token)
+        [HttpPost(Name = "ResetPassword")]
+        public async Task<ActionResult> ExecuteResetPasswordAsync([FromBody] ResetPasswordRequest request)
+            //(string password, string email, string Token)
         {
             // log
             _logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
@@ -71,24 +72,24 @@ namespace desu_life_web_backend.Controllers.ResetPassword
             //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
 
             // empty check
-            if (string.IsNullOrEmpty(password))
+            if (string.IsNullOrEmpty(request.NewPassword))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
 
             // empty check
-            if (string.IsNullOrEmpty(email))
+            if (string.IsNullOrEmpty(request.MailAddress) || string.IsNullOrEmpty(request.Token))
                 return _responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
             // check if token is vaild
-            var tempTokenData = Token.Split("[%*#]");
-            if (Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), email, "resetpw") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+            var tempTokenData = request.Token.Split("[%*#]");
+            if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "resetpw") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
 
             // update password
-            if (!await Database.Client.UpdatePassword(email, password))
+            if (!await Database.Client.UpdatePassword(request.MailAddress, request.NewPassword))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Password update failed. Please contact the administrator.");
 
             // success
-            _logger.LogInformation($"[{Utils.GetCurrentTime}] User {email} successfully updated the password.");
+            _logger.LogInformation($"[{Utils.GetCurrentTime}] User {request.MailAddress} successfully updated the password.");
 
             // need to redirect to the front-end page instead of this api
             return _responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");

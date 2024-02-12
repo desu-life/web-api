@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using static desu_life_web_backend.Database.Models;
 using static desu_life_web_backend.ResponseService;
 
@@ -12,7 +14,7 @@ namespace desu_life_web_backend.Controllers.Login
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "Logout")]
+        [HttpPost(Name = "Logout")]
         public ActionResult ExecuteLogOut()
         {
             HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
@@ -28,24 +30,24 @@ namespace desu_life_web_backend.Controllers.Login
         private readonly ILogger<Log> _logger = logger;
         private readonly ResponseService _responseService = responseService;
 
-        [HttpGet(Name = "Login")]
-        public async Task<ActionResult> ExecuteLoginAsync(string? mailAddr, string? password)
+        [HttpPost(Name = "Login")]
+        public async Task<ActionResult> ExecuteLoginAsync([FromBody] LoginRequest request)
         {
             // check if user token is valid
             // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
             //     return _responseService.Response(HttpStatusCodes.NoContent, ""); //"Already logged in.");
 
             // check email&password
-            if (string.IsNullOrEmpty(mailAddr) || string.IsNullOrEmpty(password))
+            if (string.IsNullOrEmpty(request.MailAddress) || string.IsNullOrEmpty(request.Password))
                 return _responseService.Response(HttpStatusCodes.BadRequest, "Please provide complete email or password.");
 
             // check user validity
-            var userId = await Database.Client.CheckUserIsValidity(mailAddr, password);
+            var userId = await Database.Client.CheckUserIsValidity(request.MailAddress, request.Password);
             if (userId < 0)
                 return _responseService.Response(HttpStatusCodes.BadRequest, "User does not exist or password is incorrect.");
 
             // create new token
-            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, mailAddr), Cookies.Default);
+            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, request.MailAddress), Cookies.Default);
 
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] User {userId} logged in.");
