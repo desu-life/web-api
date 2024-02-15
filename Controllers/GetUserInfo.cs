@@ -11,7 +11,7 @@ namespace desu_life_web_backend.Controllers.GetUserInfo;
 
 [ApiController]
 [Route("[controller]")]
-public class get_userController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class get_userController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.inner!;
     private readonly ILogger<Log> _logger = logger;
@@ -40,7 +40,7 @@ public class get_userController(ILogger<Log> logger, ResponseService responseSer
         {
             // log
             _logger.LogWarning($"[{Utils.GetCurrentTime}] User {UserId} logged in but not found in database. Perform a forced logout. May be a database issue.");
-            HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
             return _responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
         }
 

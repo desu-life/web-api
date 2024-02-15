@@ -8,7 +8,7 @@ namespace desu_life_web_backend.Controllers.Login
 {
     [ApiController]
     [Route("[controller]")]
-    public class logoutController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+    public class logoutController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
         private readonly ILogger<Log> _logger = logger;
@@ -17,14 +17,14 @@ namespace desu_life_web_backend.Controllers.Login
         [HttpPost(Name = "Logout")]
         public ActionResult ExecuteLogOut()
         {
-            HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
             return _responseService.Response(HttpStatusCodes.Ok, "Successfully logged out.");
         }
     }
 
 
     [Route("[controller]")]
-    public class loginController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+    public class loginController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
         private readonly ILogger<Log> _logger = logger;
@@ -47,7 +47,9 @@ namespace desu_life_web_backend.Controllers.Login
                 return _responseService.Response(HttpStatusCodes.BadRequest, "User does not exist or password is incorrect.");
 
             // create new token
-            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, request.MailAddress), Cookies.Default);
+            // string new_token = Security.SetLoginToken(userId, request.MailAddress);
+            // Console.WriteLine(new_token);
+            HttpContext.Response.Cookies.Append("token", Security.SetLoginToken(userId, request.MailAddress), cookies.Default);
 
             // success
             _logger.LogInformation($"[{Utils.GetCurrentTime}] User {userId} logged in.");

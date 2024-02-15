@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
 using static desu_life_web_backend.ResponseService;
 using static desu_life_web_backend.Security;
 using static LinqToDB.Common.Configuration;
@@ -11,7 +12,7 @@ namespace desu_life_web_backend.Controllers.ChangePassword
 {
     [ApiController]
     [Route("[controller]")]
-    public class change_passwordController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+    public class change_passwordController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
     {
         private static Config.Base config = Config.inner!;
         private readonly ILogger<Log> _logger = logger;
@@ -41,12 +42,12 @@ namespace desu_life_web_backend.Controllers.ChangePassword
             {
                 // log
                 _logger.LogWarning($"[{Utils.GetCurrentTime}] User {UserId} logged in but not found in database. Perform a forced logout. May be a database issue.");
-                HttpContext.Response.Cookies.Append("token", "", Cookies.Expire);
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
                 return _responseService.Response(HttpStatusCodes.InternalServerError, "User logged in but not found in database.");
             }
 
             // update password
-            if(!await Database.Client.UpdatePassword(UserId, request.NewPassword))
+            if (!await Database.Client.UpdatePassword(UserId, request.NewPassword))
                 return _responseService.Response(HttpStatusCodes.InternalServerError, "Password update failed. Please contact the administrator.");
 
             // success

@@ -41,7 +41,7 @@ public static partial class Security
         else
         {
             Salt = File.ReadAllBytes("Salt").ToString();
-            Console.WriteLine("Key loaded from file.");
+            Console.WriteLine("Salt loaded from file.");
         }
     }
 
@@ -61,7 +61,7 @@ public static partial class Security
         try
         {
             var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", validationParameters, out SecurityToken validatedToken);
-            foreach (var claim in principal.Claims) Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
+            // foreach (var claim in principal.Claims) Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
             var x = principal.FindFirst(ClaimTypes.NameIdentifier);
             if (x != null) UserId = long.Parse(x.Value);
             x = principal.FindFirst(ClaimTypes.Email);
