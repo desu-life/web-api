@@ -1,0 +1,1 @@
+﻿global using static desu_life_web_api.Utils;
