@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using desu_life_web_api.Http;
+using desu_life_web_api.Database.Models;
 
 namespace desu_life_web_api.Response;
 
@@ -25,7 +26,7 @@ public class Service
         };
     }
 
-    public ActionResult ResponseUserInfo(HttpStatusCodes request, Database.Models.User UserInfo, long oid)
+    public ActionResult ResponseUserInfo(HttpStatusCodes request, Models.User UserInfo, long oid)
     {
         UserResponse responseUser = new UserResponse()
         {

@@ -3,13 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using static desu_life_web_api.Database.Models;
+using desu_life_web_api.Database.Models;
 using desu_life_web_api.Response;
 using desu_life_web_api.Cookie;
 using desu_life_web_api.Request;
 using desu_life_web_api.Security;
 using desu_life_web_api.Http;
-using desu_life_web_api.Database;
 using static desu_life_web_api.Security.Token;
 using desu_life_web_api.Mail;
 

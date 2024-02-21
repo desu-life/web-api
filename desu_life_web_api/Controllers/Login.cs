@@ -1,13 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using static desu_life_web_api.Database.Models;
+using desu_life_web_api.Database.Models;
 using desu_life_web_api.Response;
 using desu_life_web_api.Cookie;
 using desu_life_web_api.Request;
 using desu_life_web_api.Security;
 using desu_life_web_api.Http;
-using desu_life_web_api.Database;
 using static desu_life_web_api.Security.Token;
 
 namespace desu_life_web_api.Controllers.Login;

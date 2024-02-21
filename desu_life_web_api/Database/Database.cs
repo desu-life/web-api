@@ -4,7 +4,7 @@ using LinqToDB.Common;
 using MySqlConnector;
 using static desu_life_web_api.Config;
 using static desu_life_web_api.Database.Connection;
-using static desu_life_web_api.Database.Models;
+using desu_life_web_api.Database.Models;
 
 namespace desu_life_web_api.Database;
 
@@ -39,7 +39,7 @@ public class Client
     public static async Task<User?> GetUser(long userId)
     {
         using var db = GetInstance();
-        return await db.Users.Where(it => it.uid == userId).FirstOrDefaultAsync();
+        return await db.Users.Where(it => it.id == userId).FirstOrDefaultAsync();
     }
 
     public static async Task<bool> OSUCheckUserHasLinkedByOthers(string osu_uid)
