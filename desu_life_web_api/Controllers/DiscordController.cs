@@ -17,7 +17,7 @@ namespace desu_life_web_api.Controllers.Discord;
 [Route("[controller]")]
 public class discord_linkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
@@ -46,14 +46,15 @@ public class discord_linkController(ILogger<Log> logger, ResponseService respons
         var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "discordlink");
 
         // success
-        return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.discord!.AuthorizeUrl}?client_id={config.discord!.clientId}&response_type=code&scope=identify&redirect_uri={config.discord!.RedirectUrl}"));
+        return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Discord!.AuthorizeUrl}" +
+            $"?client_id={config.Discord!.ClientId}&response_type=code&scope=identify&redirect_uri={config.Discord!.RedirectUrl}"));
     }
 }
 
 [Route("/callback/[controller]")]
 public class discord_callbackController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
@@ -82,14 +83,14 @@ public class discord_callbackController(ILogger<Log> logger, ResponseService res
             var requestData = new
             {
                 grant_type = "authorization_code",
-                client_id = config.discord!.clientId,
-                client_secret = config.discord!.clientSecret,
+                client_id = config.Discord!.ClientId,
+                client_secret = config.Discord!.ClientSecret,
                 scope = "identify",
                 code = code,
-                redirect_uri = config.discord!.RedirectUrl
+                redirect_uri = config.Discord!.RedirectUrl
             };
 
-            var response = await config.discord.TokenUrl
+            var response = await config.Discord.TokenUrl
                 .WithHeader("Content-type", "application/x-www-form-urlencoded")
                 .PostUrlEncodedAsync(requestData);
             responseBody = JsonConvert.DeserializeObject<JObject>((await response.GetStringAsync()))!;
@@ -105,7 +106,7 @@ public class discord_callbackController(ILogger<Log> logger, ResponseService res
         string access_token = responseBody["access_token"]!.ToString();
         try
         {
-            var response = await $"{config.discord.APIBaseUrl}/users/@me"
+            var response = await $"{config.Discord.APIBaseUrl}/users/@me"
                 .WithHeader("Authorization", $"Bearer {access_token}")
                 .GetAsync();
             responseBody = JsonConvert.DeserializeObject<JObject>((await response.GetStringAsync()))!;

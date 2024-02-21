@@ -17,7 +17,7 @@ namespace desu_life_web_api.Controllers.OSU;
 [Route("[controller]")]
 public class osu_linkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
@@ -43,14 +43,15 @@ public class osu_linkController(ILogger<Log> logger, ResponseService responseSer
             return _responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to osu! account.");
 
         // success
-        return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.osu!.AuthorizeUrl}?client_id={config.osu!.clientId}&response_type=code&scope=public&redirect_uri={config.osu!.RedirectUrl}"));
+        return _responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Osu!.AuthorizeUrl}" +
+            $"?client_id={config.Osu!.ClientId}&response_type=code&scope=public&redirect_uri={config.Osu!.RedirectUrl}"));
     }
 }
 
 [Route("/callback/[controller]")]
 public class osu_callbackController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
@@ -79,13 +80,13 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
             var requestData = new
             {
                 grant_type = "authorization_code",
-                client_id = config.osu!.clientId,
-                client_secret = config.osu!.clientSecret,
+                client_id = config.Osu!.ClientId,
+                client_secret = config.Osu!.ClientSecret,
                 code = code,
-                redirect_uri = config.osu!.RedirectUrl
+                redirect_uri = config.Osu!.RedirectUrl
             };
 
-            var response = await config.osu.TokenUrl
+            var response = await config.Osu.TokenUrl
                 .WithHeader("Content-type", "application/json")
                 .PostJsonAsync(requestData);
             responseBody = JsonConvert.DeserializeObject<JObject>((await response.GetStringAsync()))!;
@@ -101,7 +102,7 @@ public class osu_callbackController(ILogger<Log> logger, ResponseService respons
         string access_token = responseBody["access_token"]!.ToString();
         try
         {
-            var response = await $"{config.osu.APIBaseUrl}/me"
+            var response = await $"{config.Osu.APIBaseUrl}/me"
                 .WithHeader("Authorization", $"Bearer {access_token}")
                 .GetAsync();
             responseBody = JsonConvert.DeserializeObject<JObject>((await response.GetStringAsync()))!;

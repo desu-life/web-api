@@ -10,18 +10,18 @@ namespace desu_life_web_api.Database;
 
 public class Client
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
 
     private static Connection GetInstance()
     {
         var options = new DataOptions().UseMySqlConnector(
             new MySqlConnectionStringBuilder
             {
-                Server = config.database!.host,
-                Port = (uint)config.database.port,
-                UserID = config.database.user,
-                Password = config.database.password,
-                Database = config.database.db,
+                Server = config.Database!.Host,
+                Port = (uint)config.Database.Port,
+                UserID = config.Database.User,
+                Password = config.Database.Password,
+                Database = config.Database.DB,
                 CharacterSet = "utf8mb4",
                 CancellationTimeout = 5,
             }.ConnectionString

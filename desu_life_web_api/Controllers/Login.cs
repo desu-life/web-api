@@ -16,7 +16,7 @@ namespace desu_life_web_api.Controllers.Login;
 [Route("[controller]")]
 public class logoutController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 
@@ -32,7 +32,7 @@ public class logoutController(ILogger<Log> logger, ResponseService responseServi
 [Route("[controller]")]
 public class loginController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
-    private static Config.Base config = Config.inner!;
+    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> _logger = logger;
     private readonly ResponseService _responseService = responseService;
 

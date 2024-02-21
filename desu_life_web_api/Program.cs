@@ -14,14 +14,14 @@ namespace desu_life_web_api
             var configPath = "config.toml";
             if (File.Exists(configPath))
             {
-                Config.inner = Config.load(configPath);
+                Config.Inner = Config.Load(configPath);
             }
             else
             {
-                Config.inner = Config.Base.Default();
-                Config.inner.save(configPath);
+                Config.Inner = Config.Base.Default();
+                Config.Inner.Save(configPath);
             }
-            var config = Config.inner!;
+            var config = Config.Inner!;
 
 
             // security check
@@ -43,7 +43,7 @@ namespace desu_life_web_api
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-            if (config.dev)
+            if (config.Dev)
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
@@ -53,13 +53,13 @@ namespace desu_life_web_api
 
             string baseUrl = "http://";
 
-            if (config.api!.useSSL)
+            if (config.Api!.UseSSL)
             {
                 app.UseHttpsRedirection();
                 baseUrl = "https://";
             }
 
-            app.Urls.Add($"{baseUrl}{config.api.apiHost}:{config.api.apiPort}");
+            app.Urls.Add($"{baseUrl}{config.Api.ApiHost}:{config.Api.ApiPort}");
             app.MapControllers();
             app.Run();
         }

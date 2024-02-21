@@ -7,40 +7,49 @@ namespace desu_life_web_api
 {
     public class Config
     {
-        public static Base? inner;
+        private static Base? inner;
+
+        public static Base? Inner
+        {
+            get => inner;
+            set
+            {
+                inner ??= value;
+            }
+        }
 
         public class API : ITomlMetadataProvider
         {
-            public string? apiHost { get; set; }
-            public int apiPort { get; set; }
-            public bool useSSL { get; set; }
+            public string? ApiHost { get; set; }
+            public int ApiPort { get; set; }
+            public bool UseSSL { get; set; }
             TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
         }
 
         public class Mail : ITomlMetadataProvider
         {
-            public string? smtpHost { get; set; }
-            public int smtpPort { get; set; }
-            public string? userName { get; set; }
-            public string? passWord { get; set; }
+            public string? SmtpHost { get; set; }
+            public int SmtpPort { get; set; }
+            public string? UserName { get; set; }
+            public string? PassWord { get; set; }
             TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
         }
 
         public class Database : ITomlMetadataProvider
         {
-            public string? type { get; set; }
-            public string? host { get; set; }
-            public int port { get; set; }
-            public string? db { get; set; }
-            public string? user { get; set; }
-            public string? password { get; set; }
+            public string? Type { get; set; }
+            public string? Host { get; set; }
+            public int Port { get; set; }
+            public string? DB { get; set; }
+            public string? User { get; set; }
+            public string? Password { get; set; }
             TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
         }
 
         public class OSU : ITomlMetadataProvider
         {
-            public int clientId { get; set; }
-            public string? clientSecret { get; set; }
+            public int ClientId { get; set; }
+            public string? ClientSecret { get; set; }
             public string? AuthorizeUrl { get; set; }
             public string? RedirectUrl { get; set; }
             public string? APIBaseUrl { get; set; }
@@ -50,75 +59,64 @@ namespace desu_life_web_api
 
         public class Discord : ITomlMetadataProvider
         {
-            public string? clientId { get; set; }
-            public string? clientSecret { get; set; }
-            public string? AuthorizeUrl {  get; set; }
+            public string? ClientId { get; set; }
+            public string? ClientSecret { get; set; }
+            public string? AuthorizeUrl { get; set; }
             public string? RedirectUrl { get; set; }
             public string? APIBaseUrl { get; set; }
             public string? TokenUrl { get; set; }
             TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
         }
 
-
-
         public class Base : ITomlMetadataProvider
         {
-            public bool dev { get; set; }
-            public API? api { get; set; }
-            public OSU? osu { get; set; }
-            public Database? database { get; set; }
-            public Mail? mail { get; set; }
-            public Discord? discord { get; set; }
+            public bool Dev { get; set; }
+            public API? Api { get; set; }
+            public OSU? Osu { get; set; }
+            public Database? Database { get; set; }
+            public Mail? Mail { get; set; }
+            public Discord? Discord { get; set; }
 
             TomlPropertiesMetadata? ITomlMetadataProvider.PropertiesMetadata { get; set; }
             public static Base Default()
             {
                 return new Base()
                 {
-                    dev = true,
-                    api = new()
+                    Dev = true,
+                    Api = new()
                     {
-                        apiHost = "localhost",
-                        apiPort = 5500,
-                        useSSL = false
+                        ApiHost = "localhost",
+                        ApiPort = 5500,
+                        UseSSL = false
                     },
-                    osu = new()
+                    Osu = new()
                     {
-                        clientId = 0,
-                        clientSecret = "",
+                        ClientId = 0,
+                        ClientSecret = "",
                         TokenUrl = "",
                         APIBaseUrl = "",
                         RedirectUrl = "",
                         AuthorizeUrl = ""
                     },
-                    database = new()
+                    Database = new()
                     {
-                        type = "mysql",
-                        host = "",
-                        port = 3306,
-                        db = "kanonbot",
-                        user = "",
-                        password = ""
+                        Type = "mysql",
+                        Host = "",
+                        Port = 3306,
+                        DB = "kanonbot",
+                        User = "",
+                        Password = ""
                     },
-                    mail = new()
+                    Mail = new()
                     {
-                        smtpHost = "localhost",
-                        smtpPort = 587,
-                        userName = "",
-                        passWord = ""
+                        SmtpHost = "localhost",
+                        SmtpPort = 587,
+                        UserName = "",
+                        PassWord = ""
                     },
-                    discord = new()
-                    {
-                        clientId = "",
-                        clientSecret = "",
-                        TokenUrl = "",
-                        APIBaseUrl = "",
-                        RedirectUrl = "",
-                        AuthorizeUrl = ""
-                    }
                 };
             }
-            public void save(string path)
+            public void Save(string path)
             {
                 using var f = new StreamWriter(path);
                 f.Write(this.ToString());
@@ -135,8 +133,7 @@ namespace desu_life_web_api
             }
         }
 
-
-        public static Base load(string path)
+        public static Base Load(string path)
         {
             string c;
             using (var f = File.OpenText(path))

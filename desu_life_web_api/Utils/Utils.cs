@@ -8,7 +8,7 @@ namespace desu_life_web_api;
 
 public static partial class Utils
 {
-    public static Config.Base config = Config.inner!;
+    public static Config.Base config = Config.Inner!;
 
     public static string GetDesc(object? value)
     {
@@ -20,53 +20,9 @@ public static partial class Utils
         return attributes.Length > 0 ? attributes[0].Description : string.Empty;
     }
 
-    public static string HideMailAddr(string mailAddr)
-    {
-        try
-        {
-            var t1 = mailAddr.Split('@');
-            string[] t2 = new string[t1[0].Length];
-            for (int i = 0; i < t1[0].Length; i++)
-            {
-                t2[i] = "*";
-            }
-            t2[0] = t1[0][0].ToString();
-            t2[t1[0].Length - 1] = t1[0][^1].ToString();
-            string ret = "";
-            foreach (string s in t2)
-            {
-                ret += s;
-            }
-            ret += "@";
-            t2 = new string[t1[1].Length];
-            for (int i = 0; i < t1[1].Length; i++)
-            {
-                t2[i] = "*";
-            }
-            t2[0] = t1[1][0].ToString();
-            t2[t1[1].Length - 1] = t1[1][^1].ToString();
-            t2[t1[1].IndexOf(".")] = ".";
-            foreach (string s in t2)
-            {
-                ret += s;
-            }
-            return ret;
-        }
-        catch
-        {
-            return mailAddr;
-        }
-    }
+    
 
-    public static void SendMail(string mailto, string subject, string body, bool isBodyHtml)
-    {
-        var mailContent = new MailDispatcher.MailContent(new List<string> { mailto }, subject, body, isBodyHtml);
-        try
-        {
-            MailDispatcher.Send(mailContent);
-        }
-        catch { }
-    }
+
 
     public static byte[] GenerateRandomKey(int bits)
     {

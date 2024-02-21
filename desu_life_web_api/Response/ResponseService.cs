@@ -4,7 +4,7 @@ using desu_life_web_api.Http;
 
 namespace desu_life_web_api.Response;
 
-public class ResponseService
+public class Service
 {
     public ActionResult Response(HttpStatusCodes request, string message)
     {
