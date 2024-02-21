@@ -2,45 +2,45 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using desu_life_web_api.Database.Models;
-using desu_life_web_api.Response;
-using desu_life_web_api.Cookie;
-using desu_life_web_api.Request;
-using desu_life_web_api.Security;
-using desu_life_web_api.Http;
-using static desu_life_web_api.Security.Token;
+using WebAPI.Database.Models;
+using WebAPI.Response;
+using WebAPI.Cookie;
+using WebAPI.Request;
+using WebAPI.Security;
+using WebAPI.Http;
+using static WebAPI.Security.Token;
 
-namespace desu_life_web_api.Controllers.QQ;
+namespace WebAPI.Controllers.QQ;
 
 [ApiController]
 [Route("[controller]")]
-public class qq_linkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class QQLinkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
-    private readonly ILogger<Log> _logger = logger;
-    private readonly ResponseService _responseService = responseService;
+    private readonly ILogger<Log> logger = logger;
+    private readonly ResponseService responseService = responseService;
 
     [HttpGet(Name = "QQLink")]
     public ActionResult GetAuthorizeLink()
     {
         // log
-        _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link started by anonymous user.");
+        logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link started by anonymous user.");
 
         // check if user token is valid
         if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return _responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
 
         // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return _responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userID, out var mailAddr, out var _token))
+            return responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
 
         // log
-        _logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {UserId}.");
+        logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {userID}.");
 
         // *注：qq的开发者id申请不下来，只能用手输token的方式验证了
-        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "reg");
+        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), userID.ToString(), "reg");
 
         // success
-        return _responseService.ResponseQQVerify(HttpStatusCodes.Ok, token);
+        return responseService.ResponseQQVerify(HttpStatusCodes.Ok, token);
     }
 }

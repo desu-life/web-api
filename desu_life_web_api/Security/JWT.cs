@@ -2,26 +2,26 @@
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 
-namespace desu_life_web_api.Security;
+namespace WebAPI.Security;
 
 public static partial class JWT
 {
-    public static SigningCredentials creds { get; set; }
-    public static TokenValidationParameters validationParameters { get; set; }
+    public static SigningCredentials Creds { get; set; }
+    public static TokenValidationParameters ValidationParameters { get; set; }
 
     static JWT()
     {
-        validationParameters = new TokenValidationParameters
+        ValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
-            IssuerSigningKey = Key.key,
+            IssuerSigningKey = Checker.Key,
             ValidIssuer = "desu.life",
             ValidAudience = "desu.life"
         };
-        creds = new SigningCredentials(Key.key, SecurityAlgorithms.HmacSha256);
+        Creds = new SigningCredentials(Checker.Key, SecurityAlgorithms.HmacSha256);
     }
 
     public static bool CheckJWTTokenIsVaild(IRequestCookieCollection cookies)
@@ -41,7 +41,7 @@ public static partial class JWT
             audience: "desu.life",
             claims: claim_set,
             expires: DateTime.Now.AddMinutes(expires_min),
-            signingCredentials: creds
+            signingCredentials: Creds
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -52,7 +52,7 @@ public static partial class JWT
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            var principal = tokenHandler.ValidateToken(token, ValidationParameters, out var validatedToken);
             return true;
         }
         catch

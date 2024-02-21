@@ -1,37 +1,38 @@
 ﻿using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Database.Models;
+namespace WebAPI.Database.Models;
 
 [Table("badge_cdk")]
 public class BadgeCDK
 {
     [PrimaryKey, Identity]
-    public int id { get; set; }
+    [Column("id"), NotNull]
+    public int ID { get; set; }
 
-    [Column]
-    public int badge_id { get; set; }
+    [Column("badge_id")]
+    public int BadgeId { get; set; }
 
-    [Column]
-    public string? code { get; set; }
+    [Column("code")]
+    public required string Code { get; set; }
 
-    [Column]
-    public bool repeatable { get; set; }
+    [Column("repeatable")]
+    public bool? Repeatable { get; set; }
 
-    [Column]
-    public DateTimeOffset gen_time { get; set; }
+    [Column("gen_time")]
+    public DateTimeOffset? GenTime { get; set; }
 
-    [Column]
-    public DateTimeOffset redeem_time { get; set; }
+    [Column("redeem_time")]
+    public DateTimeOffset? RedeemTime { get; set; }
 
-    [Column]
-    public int redeem_count { get; set; }
+    [Column("redeem_count")]
+    public int RedeemCount { get; set; }
 
-    [Column]
-    public string? redeem_user { get; set; }
+    [Column("redeem_user")]
+    public string? RedeemUser { get; set; }
 
-    [Column]
-    public DateTimeOffset expire_at { get; set; }
+    [Column("expire_at")]
+    public DateTimeOffset? ExpireAt { get; set; }
 
     [Association(ThisKey = "badge_id", OtherKey = "id", CanBeNull = false)]
-    public BadgeList? badge_list { get; set; }
+    public BadgeList? Badge { get; set; }
 }

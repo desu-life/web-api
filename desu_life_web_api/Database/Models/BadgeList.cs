@@ -1,28 +1,29 @@
 ﻿using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Database.Models;
+namespace WebAPI.Database.Models;
 
 [Table("badge_list")]
 public class BadgeList
 {
     [PrimaryKey, Identity]
-    public int id { get; set; }
+    [Column("id"), NotNull]
+    public int ID { get; set; }
 
-    [Column]
-    public string? name { get; set; }
+    [Column("name")]
+    public required string Name { get; set; }
 
-    [Column]
-    public string? name_chinese { get; set; }
+    [Column("name_chinese")]
+    public required string NameChinese { get; set; }
 
-    [Column]
-    public string? description { get; set; }
+    [Column("description")]
+    public required string Description { get; set; }
 
-    [Column]
-    public DateTimeOffset expire_at { get; set; }
-
-    [Association(ThisKey = "id", OtherKey = "badge_id", CanBeNull = false)]
-    public IEnumerable<BadgeCDK>? badge_cdk { get; set; }
+    [Column("expire_at")]
+    public DateTimeOffset? ExpireAt { get; set; }
 
     [Association(ThisKey = "id", OtherKey = "badge_id", CanBeNull = false)]
-    public IEnumerable<UserBadges>? user_badges { get; set; }
+    public IEnumerable<BadgeCDK>? BadgeCdk { get; set; }
+
+    [Association(ThisKey = "id", OtherKey = "badge_id", CanBeNull = false)]
+    public IEnumerable<UserBadges>? UserBadges { get; set; }
 }

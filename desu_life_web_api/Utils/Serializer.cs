@@ -5,13 +5,13 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Converters;
 using Tomyn = Tomlyn.Toml;
 
-namespace desu_life_web_api.Serializer;
+namespace WebAPI.Serializer;
 
 public static class Json
 {
-    public static string Serialize(object? self) => JsonConvert.SerializeObject(self, Settings.Json);
+    public static string Serialize(object? self) => JsonConvert.SerializeObject(self, Settings.JSON);
     public static string Serialize(object? self, Formatting format) => JsonConvert.SerializeObject(self, format);
-    public static T? Deserialize<T>(string json) => JsonConvert.DeserializeObject<T>(json, Settings.Json);
+    public static T? Deserialize<T>(string json) => JsonConvert.DeserializeObject<T>(json, Settings.JSON);
     public static JObject ToLinq(string json) => JObject.Parse(json);
 }
 public static class Toml
@@ -23,7 +23,7 @@ public static class Toml
 
 internal static class Settings
 {
-    public static readonly JsonSerializerSettings Json = new()
+    public static readonly JsonSerializerSettings JSON = new()
     {
         MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
         DateParseHandling = DateParseHandling.None,

@@ -1,16 +1,17 @@
 ﻿using System.Net.Mail;
 using System.Net;
 
-namespace desu_life_web_api.Mail;
+namespace WebAPI.Mail;
 
 public static class Sender
 {
+    private static readonly Config.Base config = Config.Inner!;
     static Sender()
     {
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
     }
 
-    private static async Task MailSender(MailContent content)
+    private static async Task mailSender(MailContent content)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -25,9 +26,9 @@ public static class Sender
         content.Recipients.ForEach(recipient => message.To.Add(recipient));
         content.CC.ForEach(cc => message.CC.Add(cc));
 
-        using var client = new SmtpClient(config.Mail.SmtpHost, config.Mail.SmtpPort)
+        using var client = new SmtpClient(config.Mail!.SmtpHost, config.Mail!.SmtpPort)
         {
-            Credentials = new NetworkCredential(config.Mail.UserName, config.Mail.PassWord),
+            Credentials = new NetworkCredential(config.Mail!.UserName, config.Mail!.PassWord),
             EnableSsl = true
         };
 
@@ -39,7 +40,7 @@ public static class Sender
         var mailContent = new MailContent([mailto], subject, body, isBodyHtml);
         try
         {
-            await MailSender(mailContent);
+            await mailSender(mailContent);
         }
         catch
         {

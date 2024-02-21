@@ -1,37 +1,35 @@
 ﻿using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Database.Models;
+namespace WebAPI.Database.Models;
 
 [Table("bind_osu")]
-public class BindOsu
+public class BindOSU
 {
     [PrimaryKey, Identity]
-    public int id { get; set; }
+    [Column("id"), NotNull]
+    public int ID { get; set; }
 
-    [Column]
-    public int user_id { get; set; }
+    [Column("user_id")]
+    public int UserId { get; set; }
 
-    [Column]
-    public long osu_uid { get; set; }
+    [Column("osu_uid")]
+    public long OSUserId { get; set; }
 
-    [Column]
-    public string? player_name { get; set; }
+    [Column("player_name")]
+    public string? PlayerName { get; set; }
 
-    [Column]
-    public string? osu_mode { get; set; }
+    [Column("osu_mode")]
+    public required string OSUMode { get; set; }
 
-    [Column]
-    public int customInfoEngineVer { get; set; }
+    [Column("custom_info_engine_ver")]
+    public int CustomInfoEngineVersion { get; set; }
 
-    [Column]
-    public int InfoPanelV2_Mode { get; set; }
+    [Column("info_v2_mode")]
+    public int InfoV2Mode { get; set; }
 
-    [Column]
-    public string? InfoPanelV2_CustomMode { get; set; }
+    [Column("info_v2_custom_mode")]
+    public string? InfoV2CustomMode { get; set; }
 
     [Association(ThisKey = "user_id", OtherKey = "id", CanBeNull = false)]
     public User? User { get; set; }
-
-    [Association(ThisKey = "osu_uid", OtherKey = "osu_uid", CanBeNull = false)]
-    public IEnumerable<PermissionGroup>? Permission_group { get; set; }
 }

@@ -1,4 +1,4 @@
-﻿namespace desu_life_web_api.Request;
+﻿namespace WebAPI.Request;
 
 public class LoginRequest
 {

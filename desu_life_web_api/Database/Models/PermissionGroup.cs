@@ -1,19 +1,20 @@
 ﻿using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Database.Models;
+namespace WebAPI.Database.Models;
 
 [Table("permission_group")]
-public class PermissionGroup 
+public class PermissionGroup
 {
     [PrimaryKey, Identity]
-    public int id { get; set; }
+    [Column("id"), NotNull]
+    public int ID { get; set; }
 
-    [Column]
-    public string? name { get; set; }
+    [Column("name")]
+    public string? Name { get; set; }
 
-    [Column]
-    public uint admin { get; set; }
+    [Column("admin")]
+    public bool IsAdmin { get; set; }
 
-    [Association(ThisKey = "id", OtherKey = "permission_group", CanBeNull = false)]
-    public IEnumerable<User>? user { get; set; }
+    [Association(ThisKey = "id", OtherKey = "permission_group", CanBeNull = true)]
+    public IEnumerable<User>? User { get; set; }
 }

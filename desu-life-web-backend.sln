@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34511.84
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "desu-life-web-api", "desu-life-web-api.csproj", "{2DB1EB3A-5C99-491D-90D1-746DE551F61D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "desu-life-web-api", "desu_life_web_api/desu-life-web-api.csproj", "{2DB1EB3A-5C99-491D-90D1-746DE551F61D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

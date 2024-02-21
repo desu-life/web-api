@@ -1,43 +1,44 @@
 ﻿using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Database.Models;
+namespace WebAPI.Database.Models;
 
 [Table("user")]
 public class User
 {
     [PrimaryKey, Identity]
-    public int id { get; set; }
+    [Column("id"), NotNull]
+    public int ID { get; set; }
 
-    [Column]
-    public string? username { get; set; }
+    [Column("username")]
+    public string? UserName { get; set; }
 
-    [Column]
-    public string? email { get; set; }
+    [Column("email")]
+    public string? Email { get; set; }
 
-    [Column]
-    public string? password { get; set; }
+    [Column("password")]
+    public string? Password { get; set; }
 
-    [Column]
-    public string? last_login_ip { get; set; }
+    [Column("last_login_ip")]
+    public string? LastLoginIp { get; set; }
 
-    [Column]
-    public DateTimeOffset? last_login_time { get; set; }
+    [Column("last_login_time")]
+    public DateTimeOffset? LastLoginTime { get; set; }
 
-    [Column]
-    public int? permission_group { get; set; }
+    [Column("permission_group")]
+    public int? PermissionGroupID { get; set; }
 
-    [Association(ThisKey = "permission_group", OtherKey = "id", CanBeNull = false)]
-    public IEnumerable<PermissionGroup>? Permission_group { get; set; }
+    [Association(ThisKey = "permission_group", OtherKey = "id", CanBeNull = true)]
+    public IEnumerable<PermissionGroup>? PermissionGroup { get; set; }
 
-    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = false)]
+    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = true)]
     public IEnumerable<UserBadges>? UserBadges { get; set; }
 
-    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = false)]
-    public IEnumerable<BindDiscord>? Bind_discord { get; set; }
+    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = true)]
+    public IEnumerable<BindQQ>? QQAccount { get; set; }
 
-    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = false)]
-    public IEnumerable<BindOsu>? Bind_osu { get; set; }
+    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = true)]
+    public BindDiscord? DiscordAccount { get; set; }
 
-    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = false)]
-    public IEnumerable<BindQQ>? Bind_qq { get; set; }
+    [Association(ThisKey = "id", OtherKey = "user_id", CanBeNull = true)]
+    public BindOSU? OSUAccount { get; set; }
 }

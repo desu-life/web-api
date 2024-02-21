@@ -1,6 +1,7 @@
+using System.Text.Json.Serialization;
 using LinqToDB.Mapping;
 
-namespace desu_life_web_api.Response;
+namespace WebAPI.Response;
 
 public class Log
 {
@@ -9,30 +10,32 @@ public class Log
 
 public class QQVerifyResponse
 {
-    public string? token { get; set; } 
+    [JsonPropertyName("token")]
+    public string? Token { get; set; }
 }
 
 public class UserResponse
 {
-    public long? uid { get; set; }
-
-    public string? username { get; set; }
-
-    public string? email { get; set; }
-
-    public long? osu_uid { get; set; }
-
-    public long? qq_id { get; set; }
-
-    public string? qq_guild_uid { get; set; }
-
-    public string? kook_uid { get; set; }
-
-    public string? discord_uid { get; set; }
-
-    public string? permissions { get; set; }
-
-    public string? displayed_badge_ids { get; set; }
-
-    public string? owned_badge_ids { get; set; }
+    [JsonPropertyName("uid")]
+    public long? UserId { get; set; }
+    [JsonPropertyName("username")]
+    public string? UserName { get; set; }
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+    [JsonPropertyName("osu_id")]
+    public long? OSUserId { get; set; }
+    [JsonPropertyName("qq_id")]
+    public string? QQID { get; set; }
+    [JsonPropertyName("qq_guild_uid")]
+    public string? QQGuildUid { get; set; }
+    [JsonPropertyName("kook_uid")]
+    public string? KOOKUid { get; set; }
+    [JsonPropertyName("discord_uid")]
+    public string? DiscordUid { get; set; }
+    [JsonPropertyName("permissions")]
+    public string? Permissions { get; set; }
+    [JsonPropertyName("displayed_badge_ids")]
+    public string? DisplayedBadgeIds { get; set; }
+    [JsonPropertyName("owned_badge_ids")]
+    public string? OwnedBadgeIds { get; set; }
 }

@@ -1,14 +1,16 @@
-﻿using desu_life_web_api.Mail;
+﻿using WebAPI.Mail;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.Reflection;
 using System.Security.Cryptography;
+using LinqToDB.Tools;
+using WebAPI;
 
-namespace desu_life_web_api;
+namespace WebAPI;
 
 public static partial class Utils
 {
-    public static Config.Base config = Config.Inner!;
+    private static Config.Base config = Config.Inner!;
 
     public static string GetDesc(object? value)
     {
@@ -19,10 +21,6 @@ public static partial class Utils
             fieldInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
         return attributes.Length > 0 ? attributes[0].Description : string.Empty;
     }
-
-    
-
-
 
     public static byte[] GenerateRandomKey(int bits)
     {

@@ -1,10 +1,11 @@
-using desu_life_web_api.Response;
-using desu_life_web_api.Cookie;
-using desu_life_web_api.Request;
-using desu_life_web_api.Security;
-using desu_life_web_api.Http;
+using WebAPI.Response;
+using WebAPI.Cookie;
+using WebAPI.Request;
+using WebAPI.Security;
+using WebAPI.Http;
+using System.Text.Json;
 
-namespace desu_life_web_api
+namespace WebAPI
 {
     public class Program
     {
@@ -25,13 +26,17 @@ namespace desu_life_web_api
 
 
             // security check
-            Key.Checker();
+            Checker.Check();
 
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                }
+            );
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

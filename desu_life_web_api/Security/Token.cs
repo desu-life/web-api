@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace desu_life_web_api.Security;
+namespace WebAPI.Security;
 
 public static class Token
 {
@@ -14,7 +14,7 @@ public static class Token
         return JWT.CreateJWTToken(claim_set, 60);
     }
 
-    public static bool GetUserInfoFromToken(IRequestCookieCollection cookies, out long UserId, out string mailAddr, out string? Token)
+    public static bool GetUserInfoFromToken(IRequestCookieCollection cookies, out int UserId, out string mailAddr, out string? Token)
     {
         UserId = 0;
         mailAddr = "";
@@ -23,10 +23,10 @@ public static class Token
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", JWT.validationParameters, out SecurityToken validatedToken);
+            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", JWT.ValidationParameters, out SecurityToken validatedToken);
             // foreach (var claim in principal.Claims) Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
             var x = principal.FindFirst(ClaimTypes.NameIdentifier);
-            if (x != null) UserId = long.Parse(x.Value);
+            if (x != null) UserId = int.Parse(x.Value);
             x = principal.FindFirst(ClaimTypes.Email);
             if (x != null) mailAddr = x.Value;
             x = principal.FindFirst(ClaimTypes.UserData);
@@ -45,7 +45,7 @@ public static class Token
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", JWT.validationParameters, out SecurityToken validatedToken);
+            var principal = tokenHandler.ValidateToken(cookies["token"] ?? "", JWT.ValidationParameters, out SecurityToken validatedToken);
             var claim_set = principal.Claims.ToList();
             var existingUserDataClaim = claim_set.FirstOrDefault(c => c.Type == ClaimTypes.UserData);
             if (existingUserDataClaim != null)
@@ -62,7 +62,7 @@ public static class Token
 
     public static string GenerateVerifyToken(long timestamp, string email, string op)
     {
-        string toBeHashed = $"{timestamp}[%*#]{email}[%*#]{op}[%*#]{Key.Salt}";
+        string toBeHashed = $"{timestamp}[%*#]{email}[%*#]{op}[%*#]{Checker.Salt}";
 
         byte[] hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(toBeHashed));
         StringBuilder sb = new();

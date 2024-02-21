@@ -1,9 +1,9 @@
 ﻿using System.IO;
-using desu_life_web_api.Serializer;
+using WebAPI.Serializer;
 using LanguageExt.UnitsOfMeasure;
 using Tomlyn.Model;
 
-namespace desu_life_web_api
+namespace WebAPI
 {
     public class Config
     {

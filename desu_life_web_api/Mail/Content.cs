@@ -1,4 +1,4 @@
-﻿namespace desu_life_web_api.Mail;
+﻿namespace WebAPI.Mail;
 
 public class MailContent
 {

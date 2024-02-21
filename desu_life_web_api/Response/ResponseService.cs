@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using desu_life_web_api.Http;
-using desu_life_web_api.Database.Models;
+using WebAPI.Http;
+using Models = WebAPI.Database.Models;
 
-namespace desu_life_web_api.Response;
+namespace WebAPI.Response;
 
 public class Service
 {
@@ -19,7 +19,7 @@ public class Service
     {
         return new ObjectResult(new QQVerifyResponse
         {
-            token = token,
+            Token = token,
         })
         {
             StatusCode = (int)request
@@ -30,20 +30,20 @@ public class Service
     {
         UserResponse responseUser = new UserResponse()
         {
-            uid = UserInfo.uid,
-            username = UserInfo.username,
-            email = UserInfo.email,
+            Uid = UserInfo.id,
+            Username = UserInfo.username,
+            Email = UserInfo.email,
             osu_uid = oid == -1 ? null : oid,
-            qq_id = UserInfo.qq_id == 0 ? null : UserInfo.qq_id,
+            Qq_id = UserInfo.qq_id == 0 ? null : UserInfo.qq_id,
             qq_guild_uid = UserInfo.qq_guild_uid,
             kook_uid = UserInfo.kook_uid,
-            discord_uid = UserInfo.discord_uid,
-            permissions = UserInfo.permissions,
-            displayed_badge_ids = UserInfo.displayed_badge_ids,
+            DiscordUid = UserInfo.discord_uid,
+            Permissions = UserInfo.permissions,
+            Displayed_badge_ids = UserInfo.displayed_badge_ids,
             owned_badge_ids = UserInfo.owned_badge_ids
         };
 
-        responseUser.uid = UserInfo.uid;
+        responseUser.Uid = UserInfo.uid;
         return new ObjectResult(responseUser)
         {
             StatusCode = (int)request

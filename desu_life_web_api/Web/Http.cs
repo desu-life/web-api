@@ -2,7 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System.Net;
 
-namespace desu_life_web_api.Http;
+namespace WebAPI.Http;
 
 public enum HttpStatusCodes
 {

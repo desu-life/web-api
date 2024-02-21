@@ -1,9 +1,9 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
 using System.Net;
 using System.Net.Mail;
-using static desu_life_web_api.Mail.Sender;
+using static WebAPI.Mail.Sender;
 
-namespace desu_life_web_api.Mail;
+namespace WebAPI.Mail;
 
 public static class Service
 {

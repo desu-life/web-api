@@ -1,4 +1,4 @@
-﻿namespace desu_life_web_api.Cookie;
+﻿namespace WebAPI.Cookie;
 
 public partial class Cookies
 {

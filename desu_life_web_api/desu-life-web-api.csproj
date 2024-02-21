@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <RootNamespace>desu_life_web_api</RootNamespace>
+    <RootNamespace>WebAPI</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
