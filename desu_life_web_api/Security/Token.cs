@@ -19,6 +19,10 @@ public static class Token
         UserId = 0;
         mailAddr = "";
         Token = null;
+        if (JWT.CheckJWTTokenIsVaild(cookies) == false)
+        {
+            return false;
+        }
 
         var tokenHandler = new JwtSecurityTokenHandler();
         try

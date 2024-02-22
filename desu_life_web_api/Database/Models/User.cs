@@ -25,7 +25,7 @@ public class User
     public DateTimeOffset? LastLoginTime { get; set; }
 
     [Column("permission_group")]
-    public int? PermissionGroupID { get; set; }
+    public uint PermissionGroupID { get; set; }
 
     [Association(ThisKey = "permission_group", OtherKey = "id", CanBeNull = true)]
     public IEnumerable<PermissionGroup>? PermissionGroup { get; set; }

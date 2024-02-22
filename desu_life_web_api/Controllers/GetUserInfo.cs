@@ -10,6 +10,8 @@ using WebAPI.Security;
 using WebAPI.Http;
 using WebAPI.Database;
 using static WebAPI.Security.Token;
+using System.Linq;
+using WebAPI.Database.Models;
 
 namespace WebAPI.Controllers.GetUserInfo;
 
@@ -24,34 +26,32 @@ public class GetUserController(ILogger<Log> logger, ResponseService responseServ
     [HttpGet(Name = "GetUserInfo")]
     public async Task<ActionResult> GetUserInfoAsync()
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Trying to get user infomation by anonymous user.");
-
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
-
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
-
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Get user information triggered by user {UserId}.");
-
-        // get user info
-        var UserInfo = await Database.Client.GetUser(UserId);
-        if (UserInfo is null)
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
         {
-            // log
-            logger.LogWarning($"[{Utils.GetCurrentTime}] User {UserId} logged in but not found in database. Perform a forced logout. May be a database issue.");
-            HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
-            return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            logger.LogWarning("{CurrentTime} GerUserInfo 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
         }
 
-        //get osu info
-        var oid = await Database.Client.GetOsuUID(UserId);
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} GerUserInfo 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
 
-        // success
-        return responseService.ResponseUserInfo(HttpStatusCodes.Ok, UserInfo, oid);
+            // 成功
+            return responseService.ResponseUserInfo(HttpStatusCodes.Ok, user, qq, osu, discord, badges);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} GerUserInfo 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

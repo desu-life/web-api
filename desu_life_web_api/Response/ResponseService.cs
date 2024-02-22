@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using WebAPI.Database.Models;
 using WebAPI.Http;
 using Models = WebAPI.Database.Models;
 
@@ -26,24 +27,21 @@ public class Service
         };
     }
 
-    public ActionResult ResponseUserInfo(HttpStatusCodes request, Models.User UserInfo, long oid)
+    public ActionResult ResponseUserInfo(HttpStatusCodes request, User? user, List<BindQQ> qq, BindOSU? osu, BindDiscord? discord, List<UserBadges> badges)
     {
-        UserResponse responseUser = new UserResponse()
+        var responseUser = new UserResponse()
         {
-            Uid = UserInfo.id,
-            Username = UserInfo.username,
-            Email = UserInfo.email,
-            osu_uid = oid == -1 ? null : oid,
-            Qq_id = UserInfo.qq_id == 0 ? null : UserInfo.qq_id,
-            qq_guild_uid = UserInfo.qq_guild_uid,
-            kook_uid = UserInfo.kook_uid,
-            DiscordUid = UserInfo.discord_uid,
-            Permissions = UserInfo.permissions,
-            Displayed_badge_ids = UserInfo.displayed_badge_ids,
-            owned_badge_ids = UserInfo.owned_badge_ids
+            UserId = user!.ID,
+            UserName = user.UserName,
+            Email = user.Email,
+            LastLoginIP = user.LastLoginIp,
+            LastLoginTime = user.LastLoginTime.ToString(),
+            PermissionGroup = user.PermissionGroupID,
+            Badges = badges,
+            BindDiscord = discord,
+            BindQQ = qq,
+            BindOsu = osu
         };
-
-        responseUser.Uid = UserInfo.uid;
         return new ObjectResult(responseUser)
         {
             StatusCode = (int)request
