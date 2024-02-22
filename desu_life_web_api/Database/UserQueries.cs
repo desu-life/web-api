@@ -30,5 +30,11 @@ public partial class Client
         return await db.UsersBadges.Where(it => it.ID == uid).ToListAsync();
     }
 
+    public static async Task<bool> UpdateUserOsuDefaultMode(long uid, string mode)
+    {
+        using var db = getInstance();
+        var res = await db.BindOSU.Where(it => it.ID == uid).Set(it => it.OSUMode, mode).UpdateAsync();
+        return res > -1;
+    }
 
 }
