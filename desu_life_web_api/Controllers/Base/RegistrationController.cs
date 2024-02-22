@@ -1,4 +1,4 @@
-using Flurl.Http;
+﻿using Flurl.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
@@ -13,6 +13,7 @@ using WebAPI.Security;
 using WebAPI.Http;
 using static WebAPI.Security.Token;
 using WebAPI.Mail;
+using System.Net;
 
 namespace WebAPI.Controllers.Registration;
 
@@ -27,38 +28,42 @@ public class RegistrationController(ILogger<Log> logger, ResponseService respons
     [HttpPost(Name = "Registration")]
     public async Task<ActionResult> ExecuteLinkAsync(string email)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Account registration started by anonymous user.");
-
-        // check if the user is logged in
-        // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-        //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
-
-        // empty check
+        // 检查邮箱
         if (string.IsNullOrEmpty(email))
             return responseService.Response(HttpStatusCodes.BadRequest, "Please provide complete email.");
 
-        // check if user is registered
-        if (await Database.Client.CheckUserIsRegistered(email))
-            return responseService.Response(HttpStatusCodes.Conflict, "The provided email address has been registered.");
-
-        // create new verify token and update
-        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), email, "reg");
-
-        // send reg email
+        // 获取用户信息
         try
         {
-            await MailService.SendVerificationMail(email, token, "desulife", "reg");
-        }
-        catch
-        {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while sending the registration email.");
-            return responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while sending the registration email.");
-        }
+            var user = await DB.GetUserByEmail(email);
+            if (user is not null)
+            {
+                logger.LogWarning("{CurrentTime} RegistrationVerify 失败，邮箱已被注册。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.Conflict, "The provided email address has been registered.");
+            }
 
-        // success
-        return responseService.Response(HttpStatusCodes.Ok, "The registration mail has been sent.");
+            // 创建新的注册Token
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), email, "reg");
+
+            // 发送注册邮件
+            try
+            {
+                await MailService.SendVerificationMail(email, token, "desulife", "reg");
+            }
+            catch
+            {
+                logger.LogWarning("{CurrentTime} RegistrationVerify 失败，发送邮件时发生了错误。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while sending the registration email.");
+            }
+
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, "The registration mail has been sent.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} RegistrationVerify 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }
 
@@ -71,35 +76,27 @@ public class SetAccountController(ILogger<Log> logger, ResponseService responseS
 
     [HttpPost(Name = "SetAccount")]
     public async Task<ActionResult> GetAuthorizeLinkAsync([FromBody] RegistrationRequest request)
-    //(string password, string email, string username, string Token)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Account Set started by anonymous user.");
-
-        // check if the user is logged in
-        // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-        //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
-
-        // empty check
+        // 信息检查
         if (string.IsNullOrEmpty(request.Password) || string.IsNullOrEmpty(request.Token) ||
             string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.MailAddress))
             return responseService.Response(HttpStatusCodes.BadRequest, "Please provide full information.");
 
-        // check if token is vaild
+        // 检查Token有效性
         var tempTokenData = request.Token.Split("[%*#]");
-        if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "reg") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+        if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "reg")
+            || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
             return responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
 
-        // execute reg
-        if (!await Database.Client.InsertUser(request.MailAddress, request.Password, request.Username))
+        // 执行注册
+        if (!await DB.InsertUser(request.MailAddress, request.Password, request.Username))
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while requesting registration");
+            logger.LogWarning("{CurrentTime} Registration 失败，向数据库中写入数据时失败。", $"[{GetCurrentTime}]");
             return responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while requesting registration. Please contact the administrator.");
         }
 
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Email {request.MailAddress} successfully registered.");
+        // 成功
+        logger.LogInformation("{CurrentTime} Registration 成功，邮箱 {Email} 创建了一个新用户。", $"[{GetCurrentTime}]", request.MailAddress);
         return responseService.Response(HttpStatusCodes.Ok, "Registration success.");
     }
 }

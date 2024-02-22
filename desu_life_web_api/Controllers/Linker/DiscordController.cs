@@ -1,4 +1,4 @@
-using Flurl.Http;
+﻿using Flurl.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -9,13 +9,15 @@ using WebAPI.Security;
 using WebAPI.Http;
 using WebAPI.Database;
 using static WebAPI.Security.Token;
+using System.Net;
+using WebAPI.Database.Models;
 
 namespace WebAPI.Controllers.Discord;
 
 
 [ApiController]
 [Route("[controller]")]
-public class DiscordLinkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class DiscordLinkController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
@@ -24,35 +26,43 @@ public class DiscordLinkController(ILogger<Log> logger, ResponseService response
     [HttpGet(Name = "DiscordLink")]
     public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Discord link started by anonymous user.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} DiscordLink 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} DiscordLink 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
+            if (discord is not null)
+            {
+                logger.LogWarning("{CurrentTime} DiscordLink 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to discord account.");
+            }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
-
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Discord link operation triggered by user {UserId}.");
-
-        // check user's links
-        if (await Database.Client.CheckCurrentUserHasLinkedDiscord(UserId))
-            return responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to discord account.");
-
-        // create new verify token and update
-        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), UserId.ToString(), "discordlink");
-
-        // success
-        return responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Discord!.AuthorizeUrl}" +
+            return responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Discord!.AuthorizeUrl}" +
             $"?client_id={config.Discord!.ClientId}&response_type=code&scope=identify&redirect_uri={config.Discord!.RedirectUrl}"));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} DiscordLink 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }
 
 [Route("/callback/[controller]")]
-public class DiscordCallbackController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class DiscordCallbackController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
@@ -61,22 +71,58 @@ public class DiscordCallbackController(ILogger<Log> logger, ResponseService resp
     [HttpGet(Name = "DiscordCallBack")]
     public async Task<ActionResult> GetAuthorizeLinkAsync(string? code)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Discord Callback triggerd.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} DiscordLinkCallBack 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} DiscordLinkCallBack 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
+            // 检查回调代码
+            if (string.IsNullOrEmpty(code))
+                return responseService.Response(HttpStatusCodes.BadRequest, "Invalid operation. Please provide a valid code.");
 
-        // check code
-        if (string.IsNullOrEmpty(code))
-            return responseService.Response(HttpStatusCodes.BadRequest, "Invalid operation. Please provide a valid code.");
+            // 尝试获取discord uid
+            var discordUid = await getDiscordIDAsync(code);
+            if (discordUid is null)
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
 
-        // get discord temporary token
+            // 检查该dc账户是否已被他人绑定
+            if (await DB.IsDiscordAccountAlreadyLinked(discordUid))
+                return responseService.Response(HttpStatusCodes.Forbidden, "The provided discord account has been linked by other desu.life user.");
+
+            // 执行绑定
+            if (!await DB.LinkDiscordAccount(user.ID, discordUid))
+            {
+                logger.LogWarning("{CurrentTime} DiscordLinkCallBack 失败，向数据库中更新内容失败。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error occurred while link with discord account. Please contact the administrator.");
+            }
+
+            // 成功
+            logger.LogInformation("{CurrentTime} DiscordLinkCallBack 成功，用户 {UID} 成功绑定了Discord账户。", $"[{GetCurrentTime}]", user.ID);
+            return responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} DiscordLinkCallBack 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
+    }
+
+    private async Task<string?> getDiscordIDAsync(string code)
+    {
         JObject responseBody;
         try
         {
@@ -97,9 +143,8 @@ public class DiscordCallbackController(ILogger<Log> logger, ResponseService resp
         }
         catch (FlurlHttpException ex)
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-            return responseService.Response(HttpStatusCodes.InternalServerError, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+            logger.LogWarning("{CurrentTime} DiscordAPI 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return null;
         }
 
         // get discord user info
@@ -113,32 +158,18 @@ public class DiscordCallbackController(ILogger<Log> logger, ResponseService resp
         }
         catch (FlurlHttpException ex)
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-            return responseService.Response(HttpStatusCodes.InternalServerError, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+            logger.LogWarning("{CurrentTime} DiscordAPI 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return null;
         }
 
         // get discord user id from response data
         if (responseBody["id"] == null)
-            return responseService.Response(HttpStatusCodes.InternalServerError, "Something went wrong with the request.");
+        {
+            logger.LogWarning("{CurrentTime} DiscordAPI 失败，无法从应答中获取discord id。", $"[{GetCurrentTime}]");
+            return null;
+        }
         var discord_uid = responseBody["id"]!.ToString();
 
-        // check if the discord user has linked to another desu.life account.
-        if (await Database.Client.DiscordCheckUserHasLinkedByOthers(discord_uid))
-            return responseService.Response(HttpStatusCodes.Forbidden, "The provided discord account has been linked by other desu.life user.");
-
-        // execute link
-        if (!await Database.Client.LinkDiscordAccount(UserId, discord_uid))
-        {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
-            return responseService.Response(HttpStatusCodes.InternalServerError, "An error occurred while link with osu! account. Please contact the administrator.");
-        }
-
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully linked to the discord account.");
-
-        // need to redirect to the front-end page instead of this api
-        return responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
+        return discord_uid;
     }
 }

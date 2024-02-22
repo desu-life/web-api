@@ -1,4 +1,4 @@
-using Flurl.Http;
+﻿using Flurl.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
@@ -10,12 +10,13 @@ using WebAPI.Security;
 using WebAPI.Http;
 using WebAPI.Database;
 using static WebAPI.Security.Token;
+using System.Net;
 
 namespace WebAPI.Controllers.OSU;
 
 [ApiController]
 [Route("[controller]")]
-public class OSULinkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class OSULinkController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
@@ -24,32 +25,43 @@ public class OSULinkController(ILogger<Log> logger, ResponseService responseServ
     [HttpGet(Name = "OsuLink")]
     public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] osu! Link started by anonymous user.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} OsuLink 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} OsuLink 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
+            if (osu is not null)
+            {
+                logger.LogWarning("{CurrentTime} OsuLink 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to osu! account.");
+            }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userID, out var mailAddr, out var token))
-            return responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
-
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] osu! link operation triggered by user {userID}.");
-
-        // check user's links
-        if (await Database.Client.CheckCurrentUserHasLinkedOSU(userID))
-            return responseService.Response(HttpStatusCodes.Conflict, "Your account is currently linked to osu! account.");
-
-        // success
-        return responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Osu!.AuthorizeUrl}" +
-            $"?client_id={config.Osu!.ClientId}&response_type=code&scope=public&redirect_uri={config.Osu!.RedirectUrl}"));
+            return responseService.Response(HttpStatusCodes.Ok, JsonConvert.SerializeObject($"{config.Osu!.AuthorizeUrl}" +
+                $"?client_id={config.Osu!.ClientId}&response_type=code&scope=public&redirect_uri={config.Osu!.RedirectUrl}"));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} OsuLink 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }
 
 [Route("/callback/[controller]")]
-public class OSUCallbackController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class OSUCallbackController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
@@ -58,22 +70,59 @@ public class OSUCallbackController(ILogger<Log> logger, ResponseService response
     [HttpGet(Name = "OsuCallBack")]
     public async Task<ActionResult> GetAuthorizeLinkAsync(string? code)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] osu! Callback triggerd.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} OsuLinkCallBack 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} OsuLinkCallBack 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userID, out var mailAddr, out var token))
-            return responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+            // 检查回调代码
+            if (string.IsNullOrEmpty(code))
+                return responseService.Response(HttpStatusCodes.BadRequest, "Invalid operation. Please provide a valid code.");
 
-        // check code
-        if (string.IsNullOrEmpty(code))
-            return responseService.Response(HttpStatusCodes.BadRequest, "Invalid operation. Please provide a valid code.");
+            // 尝试获取osu! uid
+            var osuUid_s = await getOsuUIDAsync(code);
+            if (osuUid_s is null)
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+            var osuUid = long.Parse(osuUid_s);
 
-        // get osu temporary token
+            // 检查该osu!账户是否已被他人绑定
+            if (await DB.IsOsuAccountAlreadyLinked(osuUid))
+                return responseService.Response(HttpStatusCodes.Forbidden, "The provided osu! account has been linked by other desu.life user.");
+
+            // 执行绑定
+            if (!await DB.LinkOsuAccount(user.ID, osuUid))
+            {
+                logger.LogWarning("{CurrentTime} OsuLinkCallBack 失败，向数据库中更新内容失败。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error occurred while link with discord account. Please contact the administrator.");
+            }
+
+            // 成功
+            logger.LogInformation("{CurrentTime} OsuLinkCallBack 成功，用户 {UID} 成功绑定了osu!账户。", $"[{GetCurrentTime}]", user.ID);
+            return responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} OsuLinkCallBack 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
+    }
+
+    private async Task<string?> getOsuUIDAsync(string code)
+    {
         JObject responseBody;
         try
         {
@@ -93,9 +142,8 @@ public class OSUCallbackController(ILogger<Log> logger, ResponseService response
         }
         catch (FlurlHttpException ex)
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-            return responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+            logger.LogWarning("{CurrentTime} Osu!API 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return null;
         }
 
         // get osu user info
@@ -109,32 +157,18 @@ public class OSUCallbackController(ILogger<Log> logger, ResponseService response
         }
         catch (FlurlHttpException ex)
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred({ex.StatusCode}): {ex.Message}");
-            return responseService.Response(HttpStatusCodes.BadRequest, ex.StatusCode == 400 ? "Request failed." : $"Exception with code({ex.StatusCode}): {ex.Message}");
+            logger.LogWarning("{CurrentTime} Osu!API 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return null;
         }
 
         // get osu user id from response data
         if (responseBody["id"] == null)
-            return responseService.Response(HttpStatusCodes.BadRequest, "Something went wrong with the request.");
+        {
+            logger.LogWarning("{CurrentTime} DiscordAPI 失败，无法从应答中获取discord id。", $"[{GetCurrentTime}]");
+            return null;
+        }
         var osu_uid = responseBody["id"]!.ToString();
 
-        // check if the osu user has linked to another desu.life account.
-        if (await Database.Client.OSUCheckUserHasLinkedByOthers(osu_uid))
-            return responseService.Response(HttpStatusCodes.Forbidden, "The provided osu! account has been linked by other desu.life user.");
-
-        // execute link
-        if (!await Database.Client.InsertOsuUser(userID, long.Parse(osu_uid)))
-        {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while link with osu! account.");
-            return responseService.Response(HttpStatusCodes.Forbidden, "An error occurred while link with osu! account. Please contact the administrator.");
-        }
-
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] User {userID} successfully connected to the osu! account.");
-
-        // need to redirect to the front-end page instead of this api
-        return responseService.Response(HttpStatusCodes.Ok, $"Link successfully.");
+        return osu_uid;
     }
 }

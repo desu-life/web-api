@@ -9,38 +9,50 @@ using WebAPI.Request;
 using WebAPI.Security;
 using WebAPI.Http;
 using static WebAPI.Security.Token;
+using System.Net;
 
 namespace WebAPI.Controllers.QQ;
 
 [ApiController]
 [Route("[controller]")]
-public class QQLinkController(ILogger<Log> logger, ResponseService responseService) : ControllerBase
+public class QQLinkController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
     private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
     private readonly ResponseService responseService = responseService;
 
     [HttpGet(Name = "QQLink")]
-    public ActionResult GetAuthorizeLink()
+    public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link started by anonymous user.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} GerUserInfo 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} GerUserInfo 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userID, out var mailAddr, out var _token))
-            return responseService.Response(HttpStatusCodes.Forbidden, "User information check failed.");
+            // *注：qq的开发者id申请不下来，只能用手输token的方式验证了
+            var verifyToken = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), user.ID.ToString(), "reg");
 
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] QQ link operation triggered by user {userID}.");
-
-        // *注：qq的开发者id申请不下来，只能用手输token的方式验证了
-        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), userID.ToString(), "reg");
-
-        // success
-        return responseService.ResponseQQVerify(HttpStatusCodes.Ok, token);
+            // 成功
+            return responseService.ResponseQQVerify(HttpStatusCodes.Ok, verifyToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} GerUserInfo 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

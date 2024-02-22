@@ -7,7 +7,9 @@ using WebAPI.Cookie;
 using WebAPI.Request;
 using WebAPI.Security;
 using WebAPI.Http;
+using WebAPI.Database;
 using static WebAPI.Security.Token;
+using System.Collections.Generic;
 
 namespace WebAPI.Controllers.Login;
 
@@ -15,7 +17,6 @@ namespace WebAPI.Controllers.Login;
 [Route("[controller]")]
 public class LogoutController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
-    private static Config.Base config = Config.Inner!;
     private readonly ILogger<Log> logger = logger;
     private readonly ResponseService responseService = responseService;
 
@@ -27,7 +28,6 @@ public class LogoutController(ILogger<Log> logger, ResponseService responseServi
     }
 }
 
-
 [Route("[controller]")]
 public class LoginController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
 {
@@ -38,26 +38,32 @@ public class LoginController(ILogger<Log> logger, ResponseService responseServic
     [HttpPost(Name = "Login")]
     public async Task<ActionResult> ExecuteLoginAsync([FromBody] Request.LoginRequest request)
     {
-        // check if user token is valid
-        // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-        //     return _responseService.Response(HttpStatusCodes.NoContent, ""); //"Already logged in.");
-
-        // check email&password
+        // 检查用户名与密码
         if (string.IsNullOrEmpty(request.MailAddress) || string.IsNullOrEmpty(request.Password))
             return responseService.Response(HttpStatusCodes.BadRequest, "Please provide complete email or password.");
 
-        // check user validity
-        var userId = await Database.Client.CheckUserIsValidity(request.MailAddress, request.Password);
-        if (userId < 0)
-            return responseService.Response(HttpStatusCodes.BadRequest, "User does not exist or password is incorrect.");
+        // 检查用户有效性
+        try
+        {
+            var userId = await DB.ValidateUserCredentials(request.MailAddress, request.Password);
+            if (userId is null)
+            {
+                logger.LogWarning("{CurrentTime} Login 失败。操作由ip {IPADDR} 触发。", $"[{GetCurrentTime}]", HttpContext.Connection.RemoteIpAddress);
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
+                return responseService.Response(HttpStatusCodes.BadRequest, "User does not exist or password is incorrect."); ;
+            }
 
-        // create new token
-        // string new_token = Security.SetLoginToken(userId, request.MailAddress);
-        // Console.WriteLine(new_token);
-        HttpContext.Response.Cookies.Append("token", SetLoginToken(userId, request.MailAddress), cookies.Default);
+            // 下发Token
+            HttpContext.Response.Cookies.Append("token", SetLoginToken((long)userId, request.MailAddress), cookies.Default);
+            logger.LogInformation("{CurrentTime} Login 用户 {UID} 成功登录。", $"[{GetCurrentTime}]", userId);
 
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] User {userId} logged in.");
-        return responseService.Response(HttpStatusCodes.Ok, "Successfully logged in.");
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, "Successfully logged in.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} ChangePassword 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

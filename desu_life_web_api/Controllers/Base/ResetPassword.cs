@@ -9,6 +9,8 @@ using WebAPI.Request;
 using WebAPI.Security;
 using WebAPI.Http;
 using static WebAPI.Security.Token;
+using System.Net;
+using WebAPI.Database.Models;
 
 namespace WebAPI.Controllers.ResetPassword;
 [ApiController]
@@ -20,37 +22,34 @@ public class ResetPasswordVerifyController(ILogger<Log> logger, ResponseService 
     private readonly ResponseService responseService = responseService;
 
     [HttpGet(Name = "ResetPasswordVerify")]
-    public async Task<ActionResult> ResetPasswordVerifyAsync(string mailAddr, string password)
+    public async Task<ActionResult> ResetPasswordVerifyAsync(string mailAddr)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset verify started by anonymous user.");
+        // 验证用户
+        var user = await DB.GetUserByEmail(mailAddr);
 
-        // check if user logged in
-        // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-        //     return _responseService.Response(HttpStatusCodes.Found, "");
-
-        // check user validity
-        var userId = await Database.Client.CheckUserIsExsit(mailAddr);
-        if (userId < 0)
+        if (user is null)
+        {
+            logger.LogWarning("{CurrentTime} ResetPasswordVerify 失败。操作由ip {IPADDR} 触发。", $"[{GetCurrentTime}]", HttpContext.Connection.RemoteIpAddress);
             return responseService.Response(HttpStatusCodes.Forbidden, "Invaild Operation.");
+        }
 
-        // create new verify token and update
-        var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), mailAddr, "resetpw");
-
-        // send reg email
+        // 发送验证邮件
         try
         {
+            // 创建新的验证Token
+            var token = GenerateVerifyToken(DateTimeOffset.Now.ToUnixTimeSeconds(), mailAddr, "resetpw");
+
+            // 发送
             await MailService.SendVerificationMail(mailAddr, token, "desulife", "resetPassword");
+
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, "The registration mail has been sent.");
         }
-        catch
+        catch (Exception ex)
         {
-            // log
-            logger.LogError($"[{Utils.GetCurrentTime}] An error occurred while sending the verify email.");
+            logger.LogWarning("{CurrentTime} ResetPasswordVerify 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
             return responseService.Response(HttpStatusCodes.BadRequest, "An error occurred while sending the verify email.");
         }
-
-        // success
-        return responseService.Response(HttpStatusCodes.Ok, "The registration mail has been sent.");
     }
 }
 
@@ -63,36 +62,29 @@ public class ResetPasswordController(ILogger<Log> logger, ResponseService respon
 
     [HttpPost(Name = "ResetPassword")]
     public async Task<ActionResult> ExecuteResetPasswordAsync([FromBody] ResetPasswordRequest request)
-    //(string password, string email, string Token)
     {
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Password reset started by anonymous user.");
-
-        // check if the user is logged in
-        // if (JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-        //     return _responseService.Response(HttpStatusCodes.NoContent, "Already logged in.");
-
-        // empty check
-        if (string.IsNullOrEmpty(request.NewPassword))
-            return responseService.Response(HttpStatusCodes.BadRequest, "Please provide password.");
-
-        // empty check
-        if (string.IsNullOrEmpty(request.MailAddress) || string.IsNullOrEmpty(request.Token))
+        // 信息检查
+        if (string.IsNullOrEmpty(request.NewPassword) || string.IsNullOrEmpty(request.MailAddress) || string.IsNullOrEmpty(request.Token))
             return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
 
-        // check if token is vaild
+        // 检查Token有效性
         var tempTokenData = request.Token.Split("[%*#]");
-        if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "resetpw") || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+        if (request.Token != GenerateVerifyToken(long.Parse(tempTokenData[0]), request.MailAddress, "resetpw")
+            || DateTimeOffset.Now > DateTimeOffset.Parse(tempTokenData[0]).AddHours(1))
+        {
+            logger.LogWarning("{CurrentTime} ResetPassword 失败。操作由ip {IPADDR} 触发。", $"[{GetCurrentTime}]", HttpContext.Connection.RemoteIpAddress);
             return responseService.Response(HttpStatusCodes.BadRequest, "Verification failed.");
+        }
 
-        // update password
-        if (!await Database.Client.UpdatePassword(request.MailAddress, request.NewPassword))
+        // 更新密码
+        if (!await DB.UpdatePassword(request.MailAddress, request.NewPassword))
+        {
+            logger.LogWarning("{CurrentTime} ResetPassword 失败，向数据库中更新信息失败。", $"[{GetCurrentTime}]");
             return responseService.Response(HttpStatusCodes.BadRequest, "Password update failed. Please contact the administrator.");
+        }
 
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] User {request.MailAddress} successfully updated the password.");
-
-        // need to redirect to the front-end page instead of this api
+        // 成功
+        logger.LogWarning("{CurrentTime} ResetPassword 用户 {EMAIL} 成功更新了密码。", $"[{GetCurrentTime}]", request.MailAddress);
         return responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");
     }
 }

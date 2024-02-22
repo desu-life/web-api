@@ -12,6 +12,7 @@ using WebAPI.Http;
 using WebAPI.Database;
 using static WebAPI.Security.Token;
 using static LinqToDB.Common.Configuration;
+using WebAPI.Database.Models;
 
 namespace WebAPI.Controllers.ChangePassword;
 
@@ -26,39 +27,41 @@ public class ChangePasswordController(ILogger<Log> logger, ResponseService respo
     [HttpPost(Name = "ChangePassword")]
     public async Task<ActionResult> ExecuteChangePasswordAsync([FromBody] ChangePasswordRequest request)
     {
-        // check if user token is valid
-        if (!JWT.CheckJWTTokenIsVaild(HttpContext.Request.Cookies))
-            return responseService.Response(HttpStatusCodes.Unauthorized, "Invalid request.");
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} ChangePassword 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
 
-        // get info from token
-        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var UserId, out var mailAddr, out var Token))
-            return responseService.Response(HttpStatusCodes.InternalServerError, "User information check failed.");
-
-        // check password
+        // 检查新密码
         if (string.IsNullOrEmpty(request.NewPassword))
             return responseService.Response(HttpStatusCodes.BadRequest, "Please provide new password.");
 
-        // log
-        logger.LogInformation($"[{Utils.GetCurrentTime}] Get user information triggered by user {UserId}.");
-
-        // get user info
-        var UserInfo = await Database.Client.GetUser(UserId);
-        if (UserInfo is null)
+        // 获取用户信息
+        try
         {
-            // log
-            logger.LogWarning($"[{Utils.GetCurrentTime}] User {UserId} logged in but not found in database. Perform a forced logout. May be a database issue.");
-            HttpContext.Response.Cookies.Append("token", "", cookies.Expire);
-            return responseService.Response(HttpStatusCodes.InternalServerError, "User logged in but not found in database.");
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} ChangePassword 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
+
+            // 修改密码
+            if (!await Client.UpdatePassword(userId, request.NewPassword))
+                return responseService.Response(HttpStatusCodes.InternalServerError, "Password update failed. Please contact the administrator.");
+
+            logger.LogWarning("{CurrentTime} ChangePassword 用户 {UID} 成功更新了密码。", $"[{GetCurrentTime}]", userId);
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");
         }
-
-        // update password
-        if (!await Database.Client.UpdatePassword(UserId, request.NewPassword))
-            return responseService.Response(HttpStatusCodes.InternalServerError, "Password update failed. Please contact the administrator.");
-
-        // success
-        logger.LogInformation($"[{Utils.GetCurrentTime}] User {UserId} successfully updated the password.");
-
-        // need to redirect to the front-end page instead of this api
-        return responseService.Response(HttpStatusCodes.Ok, $"Password update successfully.");
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} ChangePassword 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

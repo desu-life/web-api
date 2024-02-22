@@ -32,18 +32,26 @@ public partial class Client
         return await db.Users.Where(it => it.ID == userId).FirstOrDefaultAsync();
     }
 
-    public static async Task<bool> ValidateUserCredentials(string email, string password)
+    public static async Task<long?> ValidateUserCredentials(string email, string password)
     {
         using var db = getInstance();
-        var li = db.Users.Where(it => it.Email == email && it.Password == password).Select(it => it.ID);
-        if (await li.CountAsync() > 0) return true;
-        return false;
+        var userId = await db.Users.Where(it => it.Email == email && it.Password == password)
+                               .Select(it => (long)it.ID)
+                               .FirstOrDefaultAsync();
+        return userId;
     }
 
     public static async Task<bool> UpdatePassword(long uid, string password)
     {
         using var db = getInstance();
         var res = await db.Users.Where(it => it.ID == uid).Set(it => it.Password, password).UpdateAsync();
+        return res > -1;
+    }
+
+    public static async Task<bool> UpdatePassword(string email, string password)
+    {
+        using var db = getInstance();
+        var res = await db.Users.Where(it => it.Email == email).Set(it => it.Password, password).UpdateAsync();
         return res > -1;
     }
 }
