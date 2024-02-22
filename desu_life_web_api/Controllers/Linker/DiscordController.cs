@@ -23,13 +23,13 @@ public class DiscordLinkController(ILogger<Log> logger, ResponseService response
     private readonly ILogger<Log> logger = logger;
     private readonly ResponseService responseService = responseService;
 
-    [HttpGet(Name = "DiscordLink")]
+    [HttpGet(Name = "LinkDiscord")]
     public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
         // 检查用户Token是否有效并从中获取信息
         if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
         {
-            logger.LogWarning("{CurrentTime} DiscordLink 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            logger.LogWarning("{CurrentTime} LinkDiscord 中递交了无效的Token。", $"[{GetCurrentTime}]");
             HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
             return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
         }
@@ -40,13 +40,13 @@ public class DiscordLinkController(ILogger<Log> logger, ResponseService response
             (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
             if (user is null)
             {
-                logger.LogWarning("{CurrentTime} DiscordLink 失败，用户不存在。", $"[{GetCurrentTime}]");
+                logger.LogWarning("{CurrentTime} LinkDiscord 失败，用户不存在。", $"[{GetCurrentTime}]");
                 HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
                 return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
             }
             if (discord is not null)
             {
-                logger.LogWarning("{CurrentTime} DiscordLink 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
+                logger.LogWarning("{CurrentTime} LinkDiscord 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
                 return responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to discord account.");
             }
 
@@ -55,7 +55,7 @@ public class DiscordLinkController(ILogger<Log> logger, ResponseService response
         }
         catch (Exception ex)
         {
-            logger.LogWarning("{CurrentTime} DiscordLink 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            logger.LogWarning("{CurrentTime} LinkDiscord 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
             return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
         }
     }
@@ -68,7 +68,7 @@ public class DiscordCallbackController(ILogger<Log> logger, ResponseService resp
     private readonly ILogger<Log> logger = logger;
     private readonly ResponseService responseService = responseService;
 
-    [HttpGet(Name = "DiscordCallBack")]
+    [HttpGet(Name = "Discord")]
     public async Task<ActionResult> GetAuthorizeLinkAsync(string? code)
     {
         // 检查用户Token是否有效并从中获取信息
@@ -171,5 +171,52 @@ public class DiscordCallbackController(ILogger<Log> logger, ResponseService resp
         var discord_uid = responseBody["id"]!.ToString();
 
         return discord_uid;
+    }
+}
+
+[Route("[controller]")]
+public class DiscordUnLinkController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
+{
+    private static Config.Base config = Config.Inner!;
+    private readonly ILogger<Log> logger = logger;
+    private readonly ResponseService responseService = responseService;
+
+    [HttpGet(Name = "UnlinkDiscord")]
+    public async Task<ActionResult> GetAuthorizeLinkAsync()
+    {
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} UnlinkDiscord 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
+
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} UnlinkDiscord 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
+
+            // 解绑
+            if (!await DB.UnLinkDiscordAccount(user.ID))
+            {
+                logger.LogWarning("{CurrentTime} UnlinkDiscord 失败。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+            }
+
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, "Successfully unlinked.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} UnlinkDiscord 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

@@ -22,13 +22,13 @@ public class OSULinkController(ILogger<Log> logger, ResponseService responseServ
     private readonly ILogger<Log> logger = logger;
     private readonly ResponseService responseService = responseService;
 
-    [HttpGet(Name = "OsuLink")]
+    [HttpGet(Name = "LinkOsu")]
     public async Task<ActionResult> GetAuthorizeLinkAsync()
     {
         // 检查用户Token是否有效并从中获取信息
         if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
         {
-            logger.LogWarning("{CurrentTime} OsuLink 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            logger.LogWarning("{CurrentTime} LinkOsu 中递交了无效的Token。", $"[{GetCurrentTime}]");
             HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
             return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
         }
@@ -39,13 +39,13 @@ public class OSULinkController(ILogger<Log> logger, ResponseService responseServ
             (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
             if (user is null)
             {
-                logger.LogWarning("{CurrentTime} OsuLink 失败，用户不存在。", $"[{GetCurrentTime}]");
+                logger.LogWarning("{CurrentTime} LinkOsu 失败，用户不存在。", $"[{GetCurrentTime}]");
                 HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
                 return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
             }
             if (osu is not null)
             {
-                logger.LogWarning("{CurrentTime} OsuLink 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
+                logger.LogWarning("{CurrentTime} LinkOsu 失败，用户已绑定Discord。", $"[{GetCurrentTime}]");
                 return responseService.Response(HttpStatusCodes.BadRequest, "Your account is currently linked to osu! account.");
             }
 
@@ -54,7 +54,7 @@ public class OSULinkController(ILogger<Log> logger, ResponseService responseServ
         }
         catch (Exception ex)
         {
-            logger.LogWarning("{CurrentTime} OsuLink 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            logger.LogWarning("{CurrentTime} LinkOsu 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
             return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
         }
     }
@@ -170,5 +170,52 @@ public class OSUCallbackController(ILogger<Log> logger, ResponseService response
         var osu_uid = responseBody["id"]!.ToString();
 
         return osu_uid;
+    }
+}
+
+[Route("[controller]")]
+public class OsuUnLinkController(ILogger<Log> logger, ResponseService responseService, Cookies cookies) : ControllerBase
+{
+    private static Config.Base config = Config.Inner!;
+    private readonly ILogger<Log> logger = logger;
+    private readonly ResponseService responseService = responseService;
+
+    [HttpGet(Name = "UnlinkOsu")]
+    public async Task<ActionResult> GetAuthorizeLinkAsync()
+    {
+        // 检查用户Token是否有效并从中获取信息
+        if (!GetUserInfoFromToken(HttpContext.Request.Cookies, out var userId, out var mailAddr, out var token))
+        {
+            logger.LogWarning("{CurrentTime} UnlinkOsu 中递交了无效的Token。", $"[{GetCurrentTime}]");
+            HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+            return responseService.Response(HttpStatusCodes.Forbidden, "Invalid request.");
+        }
+
+        // 获取用户信息
+        try
+        {
+            (var user, var qq, var osu, var discord, var badges) = await ControllerUtils.GetFullUserInfoAsync(userId);
+            if (user is null)
+            {
+                logger.LogWarning("{CurrentTime} UnlinkOsu 失败，用户不存在。", $"[{GetCurrentTime}]");
+                HttpContext.Response.Cookies.Append("token", "", cookies.Expire); // 强制登出
+                return responseService.Response(HttpStatusCodes.Unauthorized, "User logged in but not found in database.");
+            }
+
+            // 解绑
+            if (!await DB.UnLinkOsuAccount(user.ID))
+            {
+                logger.LogWarning("{CurrentTime} UnlinkOsu 失败。", $"[{GetCurrentTime}]");
+                return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+            }
+
+            // 成功
+            return responseService.Response(HttpStatusCodes.Ok, "Successfully unlinked.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{CurrentTime} UnlinkOsu 失败。错误信息：{Message}", $"[{GetCurrentTime}]", ex.Message);
+            return responseService.Response(HttpStatusCodes.InternalServerError, "An error has occurred.");
+        }
     }
 }

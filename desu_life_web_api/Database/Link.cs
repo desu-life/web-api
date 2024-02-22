@@ -50,4 +50,11 @@ public partial class Client
         var res = await db.BindOSU.Where(it => it.UserId == uid).DeleteAsync();
         return res > 0;
     }
+
+    public static async Task<bool> UnLinkQQAccounts(long uid)
+    {
+        using var db = getInstance();
+        var res = await db.BindQQ.Where(it => it.UserId == uid).DeleteAsync();
+        return res > 0;
+    }
 }
