@@ -67,4 +67,22 @@ public static partial class Utils
     {
         return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
     }
+
+    public static string? GetObjectDescription(Object value)
+    {
+        foreach (var field in value.GetType().GetFields())
+        {
+            // 获取object的类型，并遍历获取DescriptionAttribute
+            // 提取出匹配的那个
+            if (
+                Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute))
+                is DescriptionAttribute attribute
+            )
+            {
+                if (field.GetValue(null)?.Equals(value) ?? false)
+                    return attribute.Description;
+            }
+        }
+        return null;
+    }
 }

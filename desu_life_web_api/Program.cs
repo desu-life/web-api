@@ -1,9 +1,11 @@
-using WebAPI.Response;
+﻿using WebAPI.Response;
 using WebAPI.Cookie;
 using WebAPI.Request;
 using WebAPI.Security;
 using WebAPI.Http;
 using System.Text.Json;
+using WebAPI.Mail;
+using WebAPI.API.OSU;
 
 namespace WebAPI
 {
@@ -42,8 +44,10 @@ namespace WebAPI
             builder.Services.AddSwaggerGen();
 
             // builder.Services.AddLogging();
+            // 注册为单例
             builder.Services.AddSingleton<ResponseService>();
             builder.Services.AddSingleton<Cookies>();
+            builder.Services.AddSingleton<ApiV2>();
 
             var app = builder.Build();
 
